@@ -32,7 +32,7 @@ export function circuitSvg(l:Lesson,v:Values,english:boolean):string{
   body+='<g data-signal="'+p.pin+'">';
   body+=hit('pin-'+p.pin,'GPIO '+p.pin,16,y-15,78,31,label(23,y+4,'IO'+p.pin,13))+line('M96 '+y+'H142',p.color,'signal-wire');
   if(p.target==='led'||p.target==='rgb'){
-   body+=hit(p.target==='led'?'resistor':'rgb',english?'Series resistor':'限流电阻',137,y-28,57,46,line('M142 '+y+'l4 -5 6 10 6 -10 6 10 4 -5h26',p.color)+label(139,y-12,p.target==='led'?String(v.ohms??330)+' Ω':'330 Ω',11));
+   body+=hit(p.target==='led'?'resistor':'rgb-resistor-'+p.pin,english?'Series resistor':'限流电阻',137,y-28,57,46,line('M142 '+y+'l4 -5 6 10 6 -10 6 10 4 -5h26',p.color)+label(139,y-12,p.target==='led'?String(v.ohms??330)+' Ω':'330 Ω',11));
    body+=hit(p.target,p.target==='rgb'?'RGB LED':'LED',200,y-28,83,51,line('M194 '+y+'h22',p.color)+'<path class="led-emitter" d="M216 '+(y-7)+'v14l14 -7Z" fill="none" stroke="#505359" stroke-width="1.6"/>'+line('M230 '+(y-7)+'v14m0 -7h27v9')+line('M220 '+(y-11)+'l6 -6m-1 9 6 -6')+ground(257,y+9)+label(272,y+4,p.target==='rgb'?'RGB '+({'23':'R','19':'G','18':'B'}[p.pin]??''):'LED',12));
   }else if(p.target==='button'){
    body+=hit('button',english?'Button':'按钮',138,y-21,174,49,line('M142 '+y+'h20',p.color)+'<path class="switch-lever" data-open="M162 '+(y-3)+'l20 -11" data-closed="M162 '+y+'h20" d="M162 '+(y-3)+'l20 -11" fill="none" stroke="'+p.color+'" stroke-width="1.6"/>'+line('M182 '+y+'h31v9',p.color)+ground(213,y+9)+label(237,y+4,english?'Button':'按钮',12))+label(104,y+24,'INPUT_PULLUP',10);

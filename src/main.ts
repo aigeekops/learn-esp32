@@ -8,6 +8,7 @@ import type {Snapshot} from './simulation.ts';
 import {Workbench} from './scene.ts';
 import {icon,thumb} from './icons.ts';
 import {connections,circuitSvg} from './circuit.ts';
+import {componentDescription} from './component-info.ts';
 
 const $=<T extends HTMLElement=HTMLElement>(selector:string)=>document.querySelector<T>(selector)!;
 const esc=(s:unknown)=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
@@ -126,43 +127,23 @@ function showExecution(s:Snapshot){
  const index=template(lesson).split('\n').findIndex(line=>line.includes(patterns[lesson.id]));
  if(index!==activeLine){const el=$('.code-body');el.querySelector('.active')?.classList.remove('active');const line=el.children[index] as HTMLElement|undefined;if(line){line.classList.add('active');if(line.offsetTop-el.offsetTop<el.scrollTop||line.offsetTop-el.offsetTop+line.offsetHeight>el.scrollTop+el.clientHeight)el.scrollTop=line.offsetTop-el.offsetTop-el.clientHeight/2;}activeLine=index;}
 }
-function syncSchematicSelection(){document.querySelectorAll<SVGElement>('[data-circuit-part]').forEach(el=>{const selected=el.dataset.circuitPart===inspected;el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));});}
+function syncSchematicSelection(){document.querySelectorAll<SVGElement>('[data-circuit-part]').forEach(el=>{const selected=el.dataset.circuitPart===inspected||(el.dataset.circuitPart==='power'&&/^pin-(GND|3V3|5V)/.test(inspected));el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));});}
 function schematic(){
  $('.schematic').innerHTML='<div class="schematic-head"><b>'+text('原理图','Schematic')+'</b><small>'+title()+'</small><button aria-label="'+text('关闭原理图','Close schematic')+'" id="close-schematic">'+icon('close')+'</button></div>'+circuitSvg(lesson,values,english);
  $('.schematic').insertAdjacentHTML('beforeend','<p class="schematic-hint">'+text('点击元件或引脚，查看 3D 与参数','Select a component or pin to inspect it in 3D')+'</p>');
  $('.schematic').querySelectorAll<SVGElement>('[data-circuit-part]').forEach(el=>{const activate=()=>openInspector(el.dataset.circuitPart!);el.onclick=e=>{e.stopPropagation();activate();};el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();activate();}};});syncSchematicSelection();
  $('#close-schematic').onclick=()=>setSetting('schematic',false);
 }
-const descriptions:Record<string,[string,string]>={
- board:['38 针 DevKitC V4。GPIO34–39 只能输入，6–11 接 Flash；0/2/5/12/15 是启动配置脚。课程避开这些脚作普通输出。','38-pin DevKitC V4. GPIO34–39 are input-only; 6–11 connect to flash; 0/2/5/12/15 are strapping pins.'],
- module:['ESP32-WROOM-32E 内含处理器、存储器接口与无线电路。','ESP32-WROOM-32E contains the processor, memory interface and radio.'],
- usb:['Micro-USB 用于供电与 USB-UART 通信，不是可编程 GPIO。','Micro-USB supplies power and communicates through USB-UART.'],
- power:['GPIO 按 3.3 V 逻辑工作，GND 是公共参考。不能把 5 V 直接输入 GPIO。','GPIO uses 3.3 V logic with a common GND. Do not apply 5 V directly to GPIO.'],
- reset:['EN 复位开发板，setup() 从头开始运行。','EN resets the board, starting setup() again.'],
- boot:['按住 BOOT 再复位，可进入固件下载模式。','Hold BOOT while resetting to enter firmware download mode.'],
- resistor:['电阻跨过中缝，两端不导通。跳线和电阻插在同排同侧的不同孔，靠内部金属片连接。比较 220 Ω、330 Ω 和 1 kΩ。','A series resistor limits LED current. Compare 220 Ω, 330 Ω and 1 kΩ.'],
- led:['长脚为阳极，经独立限流电阻接 GPIO23；短脚接 GND。','The anode connects through a resistor to GPIO23; the cathode goes to GND.'],
- button:['GPIO27 使用内部上拉。按下接地为 LOW，松开为 HIGH。','GPIO27 uses an internal pull-up. Pressed is LOW; released is HIGH.'],
- pot:['两端接 3V3 与 GND，中间脚接 GPIO34。拖动旋钮试试。','Ends connect to 3V3 and GND; the wiper connects to GPIO34. Drag to turn.'],
- rgb:['R/G/B 经独立电阻接 GPIO23/19/18，共阴极接 GND。每孔只插一脚；同排 a–e、f–j 各自导通，中缝两侧隔离。','R/G/B use separate resistors on GPIO23/19/18; the common cathode goes to GND.'],
- sensor:['TMP36 用 10 mV 表示 1 °C，0 °C 对应 500 mV。','TMP36 produces 10 mV per °C, with 500 mV at 0 °C.'],
- oled:['I²C 连接：SDA21、SCL22；使用 3.3 V 供电与上拉。','I²C wiring: SDA21, SCL22, with 3.3 V power and pull-ups.'],
- buzzer:['低负载无源压电蜂鸣片，音高由 GPIO25 的信号频率决定。','A low-load passive piezo; GPIO25 frequency sets the pitch.'],
- servo:['信号接 GPIO18。独立 5 V 供电，与 ESP32 共地。','Signal on GPIO18. Separate 5 V servo supply, common GND.'],
- router:['课堂网络场景，不扫描或修改你的真实 Wi-Fi。','A classroom network model. It does not scan or change your actual Wi-Fi.'],
- supply:['只给舵机供电的独立稳压 5 V 电源，负端与 ESP32 GND 相连。','A separate regulated 5 V servo supply. Connect its negative terminal to ESP32 GND.'],
- browser:['请求在本地设备模型中演示。真机网页由 ESP32 提供。','Requests run in the local device model. Real hardware serves its own webpage.']
-};
 function openInspector(id:string){
- inspected=id;const entry=stage.entries.get(id);const relevant=lesson.params.filter(p=>id==='resistor'?p.key==='ohms':p.part===id&&p.key!=='ohms');stage.select(id);syncSchematicSelection();
- const el=$('.inspector');el.hidden=false;el.innerHTML='<h3>'+(entry?(english?entry.en:entry.label):id)+'</h3><button class="inspector-close" aria-label="'+text('关闭检查器','Close inspector')+'">'+icon('close')+'</button><p>'+((descriptions[id]??descriptions.board)[english?1:0])+'</p>'+relevant.map(paramHtml).join('')+
+ const entry=stage.entries.get(id);if(!entry)return;inspected=id;const relevant=lesson.params.filter(p=>id==='resistor'?p.key==='ohms':p.part===id&&p.key!=='ohms');stage.select(id);syncSchematicSelection();
+ const el=$('.inspector');el.hidden=false;el.innerHTML='<h3>'+(entry?(english?entry.en:entry.label):id)+'</h3><button class="inspector-close" aria-label="'+text('关闭检查器','Close inspector')+'">'+icon('close')+'</button><p>'+esc(componentDescription(id,lesson,english))+'</p>'+relevant.map(paramHtml).join('')+
  (id==='button'?'<button class="action-btn primary hold-btn" aria-pressed="false">'+text('按住按钮','Hold button')+'</button>':'')+
- '<div class="inspector-actions"><button class="action-btn" data-action="focus">'+icon('focus',14)+text('放大查看','Focus')+'</button>'+(id==='browser'?'<button class="action-btn primary" data-action="send">'+icon('send',14)+text(lesson.id==='project'?'设置阈值':'发送请求',lesson.id==='project'?'Set threshold':'Send request')+'</button>':id==='reset'?'<button class="action-btn" data-action="reset">'+text('复位程序','Reset sketch')+'</button>':'<button class="action-btn" data-action="run">'+text(status==='running'?'停止程序':'运行后可见',status==='running'?'Stop':'Run sketch')+'</button>')+'</div>';
+ '<div class="inspector-actions"><button class="action-btn" data-action="focus">'+icon('focus',14)+text('放大查看','Focus')+'</button>'+(id==='browser'?'<button class="action-btn primary" data-action="send">'+icon('send',14)+text(lesson.id==='project'?'设置阈值':'发送请求',lesson.id==='project'?'Set threshold':'Send request')+'</button>':id==='reset'?'<button class="action-btn" data-action="reset">'+text('复位程序','Reset sketch')+'</button>':(lesson.parts.includes(id as never)||id==='resistor'||id.startsWith('rgb-resistor-'))?'<button class="action-btn" data-action="run">'+text(status==='running'?'停止程序':'运行后可见',status==='running'?'Stop':'Run sketch')+'</button>':'')+'</div>';
  $('.inspector-close').onclick=()=>{el.hidden=true;inspected='';syncSchematicSelection();stage.reset();};
  el.querySelectorAll<HTMLButtonElement>('[data-swatch]').forEach((b,i,all)=>{b.onclick=()=>updateParam('color',b.dataset.swatch!);b.onkeydown=e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();const next=all[(i+(['ArrowLeft','ArrowUp'].includes(e.key)?all.length-1:1))%all.length];next.focus();updateParam('color',next.dataset.swatch!);}};});
  el.querySelectorAll<HTMLInputElement|HTMLSelectElement>('[data-param]').forEach(input=>input.oninput=()=>{const p=lesson.params.find(p=>p.key===input.dataset.param)!;updateParam(p.key,p.options?input.value:Number(input.value));});
  const hold=el.querySelector<HTMLButtonElement>('.hold-btn');if(hold){hold.onpointerdown=e=>{e.preventDefault();hold.setPointerCapture(e.pointerId);inputButton(true);hold.setAttribute('aria-pressed','true');};hold.onpointerup=hold.onpointercancel=()=>{inputButton(false);hold.setAttribute('aria-pressed','false');};hold.onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();inputButton(true);hold.setAttribute('aria-pressed','true');}};hold.onkeyup=e=>{if(e.key===' '||e.key==='Enter'){inputButton(false);hold.setAttribute('aria-pressed','false');}};}
- stage.focus(id);
+ stage.showSelection(id);
  el.querySelector<HTMLButtonElement>('[data-action="focus"]')!.onclick=()=>stage.focus(id);
  const action=el.querySelector<HTMLButtonElement>('[data-action="run"]');if(action)action.onclick=()=>{if(status==='running')stop();else void run();openInspector(id);};
  const reset=el.querySelector<HTMLButtonElement>('[data-action="reset"]');if(reset)reset.onclick=()=>{stop();void run();};
@@ -189,7 +170,7 @@ function setSetting(key:string,value:boolean){(settings as Record<string,boolean
 function openMenu(kind:string){
  const el=$('.flyout');if(menu===kind&&!el.hidden){el.hidden=true;menu='';updateNav();return;}menu=kind;el.hidden=false;updateNav();
  let body='',heading='';
- if(kind==='chip'){heading=ui[4];body=[...stage.entries].map(([id,e])=>'<button class="menu-row" data-component="'+id+'">'+icon('focus',20)+'<span>'+(english?e.en:e.label)+'<small>'+esc((descriptions[id]??descriptions.board)[english?1:0])+'</small></span></button>').join('');}
+ if(kind==='chip'){heading=ui[4];body=[...stage.entries].map(([id,e])=>'<button class="menu-row" data-component="'+id+'">'+icon('focus',20)+'<span>'+(english?e.en:e.label)+'<small>'+esc(componentDescription(id,lesson,english))+'</small></span></button>').join('');}
  if(kind==='settings'){heading=ui[6];body=[['labels','标注','Callout labels','3D 视图中的热点和文字','Cards and pointers around the view'],['flow','电流流动','Current flow','沿导线显示信号与电流方向','Moving dots on the wires'],['grid','地面网格','Floor grid','开发板下方的浅色网格','Faint grid under the board'],['autoRotate','空闲旋转','Turntable','空闲时缓慢转动视角','Rotate the view while idle'],['sound','声音','Sound','让蜂鸣器发出声音','Let the piezo play out loud'],['reducedMotion','减弱动画','Reduce motion','缩短场景和启动过渡','Near-instant transitions']].map(([key,zh,en,desc,descEn])=>'<label class="setting-row"><span>'+text(zh,en)+'<small>'+text(desc,descEn)+'</small></span><input type="checkbox" data-setting="'+key+'" '+((settings as Record<string,boolean>)[key]?'checked':'')+'></label>').join('')+'<button class="reset-progress">'+text('重置进度','Reset progress')+'</button>';}
  if(kind==='globe'){heading=ui[7];body=languages.map(([code,name])=>'<button class="menu-row '+(code===language?'active':'')+'" data-language="'+code+'"><span style="width:30px">'+code.toUpperCase()+'</span>'+name+(code===language?' ✓':'')+'</button>').join('');}
  el.innerHTML='<h2>'+heading+'</h2><button class="flyout-close" aria-label="'+text('关闭菜单','Close menu')+'">'+icon('close')+'</button>'+body;

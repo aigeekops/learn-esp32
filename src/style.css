@@ -45,3 +45,11 @@
  .rail.expanded .rail-credit{writing-mode:horizontal-tb;text-align:center;padding:0;font-size:10px;line-height:1.7;flex-shrink:0}
  .rail.expanded~.flyout{left:232px}
 }
+
+.component-tooltip{position:absolute;z-index:14;pointer-events:none;background:#faf7ed;border:1px solid #65a19c;border-radius:7px;padding:7px 10px;color:#334c50;font-size:12px;font-weight:600;box-shadow:0 3px 12px #3e4e4220;white-space:nowrap}
+.selection-link{position:absolute;inset:0;width:100%;height:100%;z-index:12;pointer-events:none;overflow:hidden}
+.selection-link path{fill:none;stroke:#269b9c;stroke-width:1.6;stroke-dasharray:6 5;stroke-linejoin:round}
+.selection-link circle{fill:#9fe3dc;stroke:#259b9c;stroke-width:2.5}
+.scene-tag.hovered{border-color:#369a97;color:#356f72;box-shadow:0 0 0 2px #75c4bb30}
+.scene-tag.selected i{background:#27a9a4;border-color:#219491;box-shadow:0 0 0 4px #b4e6dc99}
+.inspector h3{text-transform:none}.inspector p{color:#68736a;font-size:12px;line-height:1.75}
