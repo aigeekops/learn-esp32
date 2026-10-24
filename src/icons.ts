@@ -1,4 +1,5 @@
 const paths:Record<string,string>={
+message:'<path d="M21 11a8 8 0 0 1-8 8H8l-5 3 1-6a8 8 0 1 1 17-5Z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/>',
 home:'<path d="m3 11 9-8 9 8M5 10v11h5v-7h4v7h5V10"/>',
 book:'<path d="M12 5v16M3 4c3-1 6-1 9 1 3-2 6-2 9-1v15c-3-1-6-1-9 1-3-2-6-2-9-1z"/>',
 chip:'<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 3v3m6-3v3M9 18v3m6-3v3M3 9h3m-3 6h3m12-6h3m-3 6h3"/><rect x="9" y="9" width="6" height="6"/>',
@@ -23,6 +24,7 @@ send:'<path d="m3 3 19 9-19 9 4-9zm4 9h15"/>'
 export function icon(name:string,size=20){return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[name]||paths.chip)+'</svg>';}
 export function thumb(kind:string){
  let body='';
+ if(['serial','clock','alarm','project'].includes(kind)){const symbols:Record<string,string>={serial:'&gt;_ 115200',clock:'millis()',alarm:'ALARM',project:'ESP32 IoT'};return '<svg class="thumb" viewBox="0 0 96 70" aria-hidden="true"><path d="m13 19 62-5 8 39-64 5z" fill="#3c505a" stroke="#303647" stroke-width="2"/><path d="m22 25 45-4 4 23-45 4z" fill="#20373d"/><text x="47" y="36" text-anchor="middle" fill="#b8d8cc" font-size="8" font-family="monospace">'+symbols[kind]+'</text><path d="m28 53 35-3" stroke="#b9a260" stroke-width="4" stroke-dasharray="2 3"/></svg>';}
  if(kind==='board')body='<path d="m10 22 53-10 23 32-53 12z" fill="#36464d" stroke="#303647" stroke-width="2"/><path d="m37 18 20-4 11 15-20 4z" fill="#b9bdb5" stroke="#303647"/><path d="m12 28 12-3 6 9-12 3z" fill="#c6c7bb" stroke="#303647"/><path d="m16 40 48-9m-30 19 44-9" stroke="#b8a362" stroke-width="5" stroke-dasharray="2 3"/><text x="39" y="43" fill="#efead9" font-size="8">ESP32</text>';
  else if(kind==='led'||kind==='rgb')body='<path d="M43 39v22m11-22v18" stroke="#666a68" stroke-width="3"/><path d="M35 31V19a13 13 0 0 1 26 0v12z" fill="'+(kind==='rgb'?'#ab76bf':'#c95e4f')+'" stroke="#303647" stroke-width="2"/><ellipse cx="48" cy="31" rx="15" ry="4" fill="#ae6c61" stroke="#303647"/><path d="M41 15c0-5 4-7 7-7" stroke="#f3d5c4" stroke-width="3"/>';
  else if(kind==='button')body='<path d="m19 32 33-10 27 17-35 13z" fill="#424851" stroke="#303647" stroke-width="2"/><path d="m19 32 1 10 25 17 34-10V39" fill="#343944" stroke="#303647"/><ellipse cx="48" cy="27" rx="16" ry="11" fill="#c65e4e" stroke="#303647" stroke-width="2"/><path d="M25 45v10m45-7v10" stroke="#adb4ad" stroke-width="3"/>';

@@ -1,4 +1,5 @@
 import './style.css';
+import wechatQr from './assets/wechat-qr.jpg?inline';
 import {lessons,defaults,normalize} from './lessons.ts';
 import type {Lesson,Values,Param} from './lessons.ts';
 import {template,source,codeValue} from './firmware.ts';
@@ -35,7 +36,7 @@ const ui=packs[language]??packs.zh;
 const text=(zh:string,en:string)=>english?en:zh;
 let done=new Set(load<string[]>('done',[]).filter(id=>lessons.some(l=>l.id===id)));
 let saved=load<Record<string,Values>>('values',{});
-let settings={labels:true,flow:true,grid:true,autoRotate:false,sound:true,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,schematic:false,...load<Record<string,boolean>>('settings',{})};
+let settings={labels:true,flow:true,grid:true,autoRotate:false,sound:true,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,schematic:true,...load<Record<string,boolean>>('settings',{})};
 let lesson:Lesson=lessons.find(l=>l.id===location.hash.slice(1))??lessons[0];
 let values=normalize(lesson,saved[lesson.id]??{}),activeTab='overview',inspected='',menu='',status:'stopped'|'loading'|'running'='stopped',runToken=0;
 let model:Simulation|undefined,snapshot:Snapshot|undefined,lastFrame=0,toastTimer:ReturnType<typeof setTimeout>;
@@ -43,14 +44,19 @@ let activeLine=-1;
 let heldInput=false;
 function inputButton(held:boolean){heldInput=held;if(status==='stopped'&&held)void run();model?.input(held);}
 let audio:AudioContext|undefined,oscillator:OscillatorNode|undefined,gain:GainNode|undefined;
-const navs=[['home',ui[2]],['book',ui[3]],['chip',ui[4]],['play',ui[5]],['settings',ui[6]],['globe',ui[7]]];
-$('#app').innerHTML='<aside class="rail" aria-label="'+ui[2]+'"><button id="rail-toggle" aria-label="'+text('展开侧边栏','Expand sidebar')+'">'+icon('right')+'</button>'+navs.map(([name,label])=>'<button data-nav="'+name+'" title="'+label+'" aria-label="'+label+'">'+icon(name,22)+'<span>'+label+'</span></button>').join('')+'<a class="rail-credit" href="https://learn-arduino-red.vercel.app/" target="_blank" rel="noopener">'+text('交互设计参考','Interaction reference')+'<br>Learn Arduino · DilumSanjaya</a></aside>'+
+const lessonArtwork:Record<string,string>={board:'board',blink:'led',serial:'serial',button:'button',knob:'pot',pwm:'rgb',temperature:'sensor',timing:'clock',display:'oled',sound:'buzzer',servo:'servo',alarm:'alarm',wifi:'router',http:'browser',web:'browser',project:'project'};
+const navs=[['home',ui[2]],['chip',ui[4]],['play',ui[5]],['settings',ui[6]],['globe',ui[7]]];
+$('#app').innerHTML='<aside class="rail" aria-label="'+ui[2]+'"><button id="rail-toggle" aria-expanded="false" aria-label="'+text('展开侧边栏','Expand sidebar')+'">'+icon('right')+'</button>'+navs.map(([name,label])=>'<button data-nav="'+name+'" title="'+label+'" aria-label="'+label+'">'+icon(name,22)+'<span>'+label+'</span></button>').join('')+'<button id="wechat-follow" class="wechat-follow" aria-label="关注公众号极客行动" title="关注公众号 · 极客行动">'+icon('message',21)+'<span>极客行动</span></button><section class="rail-wechat" aria-label="微信公众号 极客行动"><p>微信公众号</p><h2>极客行动</h2><img src="'+wechatQr+'" width="258" height="258" alt="微信公众号极客行动关注二维码"></section><a class="rail-credit" href="https://github.com/aigeekops/learn-esp32" target="_blank" rel="noopener noreferrer" aria-label="GitHub · aigeekops/learn-esp32">GitHub<br>aigeekops/learn-esp32</a></aside>'+
 '<main class="main"><header class="masthead"><div class="brand-symbol">'+icon('chip',48)+'</div><div><h1>'+ui[0]+'</h1><p>'+ui[1]+'</p></div></header>'+
 '<section class="workbench" aria-label="3D ESP32"><div class="view-hint">'+text('拖动或 WASD 平移 · Q / E 旋转 · 滚轮缩放','Drag or WASD to pan · Q / E to rotate · Scroll to zoom')+'</div><div class="toolbar" role="toolbar" aria-label="3D">'+[['rotateLeft','向左转','Rotate left'],['rotateRight','向右转','Rotate right'],['minus','缩小','Zoom out'],['plus','放大','Zoom in'],['reset','重置视图','Reset view'],['flow','显示电流流动','Show current flow'],['schematic','显示原理图','Show schematic']].map(([name,zh,en])=>'<button class="tool" data-view="'+name+'" aria-label="'+text(zh,en)+'" title="'+text(zh,en)+'" '+(['flow','schematic'].includes(name)?'role="checkbox" aria-checked="'+settings[name as 'flow'|'schematic']+'"':'')+'>'+icon(name)+'</button>').join('')+'</div><div class="readout" hidden></div><div class="inspector" aria-label="'+text('元件检查器','Component inspector')+'" hidden></div><div class="schematic" hidden></div><div class="minimap" aria-label="'+text('小地图：点击移动视图','Minimap: click to pan')+'" hidden></div></section>'+
 '<div class="progress-block"><div class="progress-inner">'+icon('book',27)+'<div class="progress-copy">'+ui[16]+'<div class="progress-bottom"><div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="16"><div id="progress-fill"></div></div><span id="progress-count">0/16</span></div></div></div><div class="clock"></div></div>'+
 '<aside class="learning"><section class="panel info-panel"><div class="tabs" role="tablist">'+['overview','pinout','example','specs'].map((id,i)=>'<button role="tab" id="tab-'+id+'" aria-controls="info-content" aria-selected="'+(i===0)+'" data-tab="'+id+'">'+ui[8+i]+'</button>').join('')+'</div><button class="info-expand" title="'+text('展开面板','Expand panel')+'" aria-label="'+text('展开面板','Expand panel')+'">'+icon('expand')+'</button><div class="info-body" role="tabpanel" id="info-content"></div></section>'+
 '<section class="panel code-panel"><div class="code-head"><h2>'+ui[12]+'</h2><button class="small-btn" id="expand-code" aria-label="'+text('展开代码','Expand code')+'">'+icon('expand')+'</button><button class="small-btn" id="copy-code" aria-label="'+ui[17]+'">'+icon('copy')+'</button><button class="small-btn run" id="run" aria-label="'+ui[18]+'">'+icon('play')+'</button></div><div class="code-body" aria-label="Arduino C++"></div><section class="serial"><button class="serial-grip" role="separator" aria-orientation="horizontal" aria-label="'+text('调整串口监视器大小','Resize serial monitor')+'"></button><div class="serial-head"><i></i><span>'+ui[13]+'</span><span class="serial-status">'+ui[14]+'</span><button id="stop" aria-label="'+ui[19]+'">×</button></div><div class="serial-logs" role="log" aria-live="off"></div></section></section></aside>'+
-'<section class="courses"><h2>'+ui[3]+'</h2><div class="course-track" role="group" aria-label="'+ui[3]+'"></div><button class="course-arrow prev" aria-label="'+text('前面的课程','Previous lessons')+'">'+icon('left')+'</button><button class="course-arrow next" aria-label="'+text('更多课程','More lessons')+'">'+icon('right')+'</button></section></main><section class="flyout" hidden></section><div class="toast" role="status" hidden></div>';
+'<section class="courses"><h2>'+ui[3]+'</h2><div class="course-track" role="group" aria-label="'+ui[3]+'"></div><button class="course-arrow prev" aria-label="'+text('前面的课程','Previous lessons')+'">'+icon('left')+'</button><button class="course-arrow next" aria-label="'+text('更多课程','More lessons')+'">'+icon('right')+'</button></section></main><section class="flyout" hidden></section><div class="toast" role="status" hidden></div><dialog class="wechat-dialog" aria-labelledby="wechat-title"><button class="wechat-close" aria-label="关闭公众号二维码">'+icon('close')+'</button><p class="wechat-eyebrow">一起学 AI X 机器人</p><h2 id="wechat-title">关注「极客行动」</h2><p>微信扫码关注，一起学 AI X 机器人。</p><img src="'+wechatQr+'" width="258" height="258" alt="微信公众号极客行动关注二维码"><p class="wechat-tip">微信扫一扫 · 手机端可长按识别二维码</p></dialog>';
+const followDialog=$<HTMLDialogElement>('.wechat-dialog');
+$('#wechat-follow').onclick=()=>followDialog.showModal();
+$('.wechat-close').onclick=()=>followDialog.close();
+followDialog.addEventListener('click',e=>{if(e.target===followDialog){const r=followDialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)followDialog.close();}});
 const stage=new Workbench($('.workbench'),{select:id=>openInspector(id),input:(key,v)=>updateParam(key,Math.round(v)),button:inputButton});
 function toast(message:string){const el=$('.toast');el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,2500);}
 function title(l=lesson){return english?l.en:l.title;}
@@ -60,11 +66,12 @@ function updateParam(key:string,value:number|string){
  const next=p.options?String(value):Math.max(p.min!,Math.min(p.max!,Math.round(Number(value)/(p.step??1))*(p.step??1)));
  if(p.options&&!p.options.some(o=>o[0]===next))return;values[key]=next;save();renderCode();if(settings.schematic)schematic();
  document.querySelectorAll<HTMLInputElement|HTMLSelectElement>('[data-param="'+key+'"]').forEach(el=>{if(el!==document.activeElement)el.value=String(next);});
+ document.querySelectorAll<HTMLElement>('[data-swatch]').forEach(el=>el.setAttribute('aria-checked',String(el.dataset.swatch===String(values.color))));
  document.querySelectorAll<HTMLOutputElement>('[data-output="'+key+'"]').forEach(el=>el.value=String(next)+(p.unit?' '+p.unit:''));
 }
 function renderCards(){
  const track=$('.course-track'),scroll=track.scrollLeft;
- track.innerHTML=lessons.map((l,i)=>'<button class="course-card '+(l.id===lesson.id?'active':'')+'" data-lesson="'+l.id+'" aria-label="'+text('第 '+(i+1)+' 课：','Lesson '+(i+1)+': ')+title(l)+'">'+thumb(l.parts[0]??'board')+'<span>'+(i+1)+'. '+title(l)+'</span>'+icon('right')+(done.has(l.id)?'<i class="done-mark">✓</i>':'')+'</button>').join('');
+ track.innerHTML=lessons.map((l,i)=>'<button class="course-card '+(l.id===lesson.id?'active':'')+'" data-lesson="'+l.id+'" aria-label="'+text('第 '+(i+1)+' 课：','Lesson '+(i+1)+': ')+title(l)+'">'+thumb(lessonArtwork[l.id])+'<span>'+(i+1)+'. '+title(l)+'</span>'+icon('right')+(done.has(l.id)?'<i class="done-mark">✓</i>':'')+'</button>').join('');
  document.querySelectorAll<HTMLButtonElement>('.course-card').forEach(b=>b.onclick=()=>setLesson(b.dataset.lesson!));
  track.scrollLeft=scroll;
  $('#progress-count').textContent=done.size+'/16';$('#progress-fill').style.width=done.size/16*100+'%';$('.track').setAttribute('aria-valuenow',String(done.size));
@@ -109,16 +116,21 @@ function renderCode(){
   let out='',at=0;for(const match of line.matchAll(/@@(\w+)@@/g)){out+=highlight(line.slice(at,match.index));const key=match[1];out+='<button class="code-param" data-code-param="'+key+'" title="'+text('点击修改','Click to change')+'">'+esc(codeValue(key,values))+'</button>';at=match.index!+match[0].length;}out+=highlight(line.slice(at));
   return '<div class="code-line"><span class="line-no">'+(i+1)+'</span><span class="code-text">'+out+'</span></div>';
  }).join('');
- el.scrollTop=scroll;el.querySelectorAll<HTMLButtonElement>('[data-code-param]').forEach(b=>b.onclick=()=>{const key=b.dataset.codeParam!;const p=lesson.params.find(p=>p.key===key);if(p){openInspector(p.part);$('.inspector [data-param="'+key+'"]')?.focus();}});
+ el.scrollTop=scroll;el.querySelectorAll<HTMLButtonElement>('[data-code-param]').forEach(b=>b.onclick=()=>{const key=b.dataset.codeParam!;const p=lesson.params.find(p=>p.key===key);if(p){openInspector(p.key==='ohms'?'resistor':p.part);$('.inspector [data-param="'+key+'"]')?.focus();}});
 }
 function showExecution(s:Snapshot){
- document.querySelectorAll<SVGTextElement>('.schematic [data-signal]').forEach(row=>{const pin=row.dataset.signal!;row.querySelector('[data-level]')!.textContent=pin==='23'?(s.led?'HIGH':'LOW'):pin==='27'?(s.pressed?'LOW':'HIGH'):pin==='34'?s.volts.toFixed(1)+'V':pin==='35'?s.mv+'mV':pin==='25'?s.frequency+'Hz':'';});
+ document.querySelectorAll<SVGPathElement>('.schematic .switch-lever').forEach(el=>el.setAttribute('d',el.dataset[s.pressed?'closed':'open']!));
+ document.querySelectorAll<SVGPathElement>('.schematic .led-emitter').forEach(el=>el.setAttribute('fill',s.led?String(values.color??'#df554b'):'none'));
+ document.querySelectorAll<SVGTextElement>('.schematic [data-signal]').forEach(row=>{const pin=row.dataset.signal!;row.setAttribute('data-active',String(pin==='23'?s.led:pin==='27'?s.pressed:true));row.querySelector('[data-level]')!.textContent=pin==='23'?(s.led?'HIGH':'LOW'):pin==='27'?(s.pressed?'LOW':'HIGH'):pin==='34'?s.volts.toFixed(1)+'V':pin==='35'?s.mv+'mV':pin==='25'?s.frequency+'Hz':'';});
  const patterns:Record<string,string>={board:'delay(1000)',blink:s.led?'delay(@@on@@)':'delay(@@off@@)',serial:'Serial.printf',button:'digitalWrite(23, lit)',knob:'int raw =',pwm:'ledcWrite(23',temperature:'digitalWrite(23, temperatureC',timing:'unsigned long now',display:'display.display()',sound:'ledcWriteTone',servo:'ledcWrite(18',alarm:'updateAlarm(millis())',wifi:'WiFi.status() ==',http:'server.handleClient()',web:'server.handleClient()',project:'updateAlarm(now)'};
  const index=template(lesson).split('\n').findIndex(line=>line.includes(patterns[lesson.id]));
  if(index!==activeLine){const el=$('.code-body');el.querySelector('.active')?.classList.remove('active');const line=el.children[index] as HTMLElement|undefined;if(line){line.classList.add('active');if(line.offsetTop-el.offsetTop<el.scrollTop||line.offsetTop-el.offsetTop+line.offsetHeight>el.scrollTop+el.clientHeight)el.scrollTop=line.offsetTop-el.offsetTop-el.clientHeight/2;}activeLine=index;}
 }
+function syncSchematicSelection(){document.querySelectorAll<SVGElement>('[data-circuit-part]').forEach(el=>{const selected=el.dataset.circuitPart===inspected;el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));});}
 function schematic(){
  $('.schematic').innerHTML='<div class="schematic-head"><b>'+text('原理图','Schematic')+'</b><small>'+title()+'</small><button aria-label="'+text('关闭原理图','Close schematic')+'" id="close-schematic">'+icon('close')+'</button></div>'+circuitSvg(lesson,values,english);
+ $('.schematic').insertAdjacentHTML('beforeend','<p class="schematic-hint">'+text('点击元件或引脚，查看 3D 与参数','Select a component or pin to inspect it in 3D')+'</p>');
+ $('.schematic').querySelectorAll<SVGElement>('[data-circuit-part]').forEach(el=>{const activate=()=>openInspector(el.dataset.circuitPart!);el.onclick=e=>{e.stopPropagation();activate();};el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();activate();}};});syncSchematicSelection();
  $('#close-schematic').onclick=()=>setSetting('schematic',false);
 }
 const descriptions:Record<string,[string,string]>={
@@ -128,10 +140,11 @@ const descriptions:Record<string,[string,string]>={
  power:['GPIO 按 3.3 V 逻辑工作，GND 是公共参考。不能把 5 V 直接输入 GPIO。','GPIO uses 3.3 V logic with a common GND. Do not apply 5 V directly to GPIO.'],
  reset:['EN 复位开发板，setup() 从头开始运行。','EN resets the board, starting setup() again.'],
  boot:['按住 BOOT 再复位，可进入固件下载模式。','Hold BOOT while resetting to enter firmware download mode.'],
+ resistor:['电阻跨过中缝，两端不导通。跳线和电阻插在同排同侧的不同孔，靠内部金属片连接。比较 220 Ω、330 Ω 和 1 kΩ。','A series resistor limits LED current. Compare 220 Ω, 330 Ω and 1 kΩ.'],
  led:['长脚为阳极，经独立限流电阻接 GPIO23；短脚接 GND。','The anode connects through a resistor to GPIO23; the cathode goes to GND.'],
  button:['GPIO27 使用内部上拉。按下接地为 LOW，松开为 HIGH。','GPIO27 uses an internal pull-up. Pressed is LOW; released is HIGH.'],
  pot:['两端接 3V3 与 GND，中间脚接 GPIO34。拖动旋钮试试。','Ends connect to 3V3 and GND; the wiper connects to GPIO34. Drag to turn.'],
- rgb:['R/G/B 经独立电阻接 GPIO23/19/18，共阴极接 GND。','R/G/B use separate resistors on GPIO23/19/18; the common cathode goes to GND.'],
+ rgb:['R/G/B 经独立电阻接 GPIO23/19/18，共阴极接 GND。每孔只插一脚；同排 a–e、f–j 各自导通，中缝两侧隔离。','R/G/B use separate resistors on GPIO23/19/18; the common cathode goes to GND.'],
  sensor:['TMP36 用 10 mV 表示 1 °C，0 °C 对应 500 mV。','TMP36 produces 10 mV per °C, with 500 mV at 0 °C.'],
  oled:['I²C 连接：SDA21、SCL22；使用 3.3 V 供电与上拉。','I²C wiring: SDA21, SCL22, with 3.3 V power and pull-ups.'],
  buzzer:['低负载无源压电蜂鸣片，音高由 GPIO25 的信号频率决定。','A low-load passive piezo; GPIO25 frequency sets the pitch.'],
@@ -141,19 +154,21 @@ const descriptions:Record<string,[string,string]>={
  browser:['请求在本地设备模型中演示。真机网页由 ESP32 提供。','Requests run in the local device model. Real hardware serves its own webpage.']
 };
 function openInspector(id:string){
- inspected=id;const entry=stage.entries.get(id);const relevant=lesson.params.filter(p=>p.part===id);
+ inspected=id;const entry=stage.entries.get(id);const relevant=lesson.params.filter(p=>id==='resistor'?p.key==='ohms':p.part===id&&p.key!=='ohms');stage.select(id);syncSchematicSelection();
  const el=$('.inspector');el.hidden=false;el.innerHTML='<h3>'+(entry?(english?entry.en:entry.label):id)+'</h3><button class="inspector-close" aria-label="'+text('关闭检查器','Close inspector')+'">'+icon('close')+'</button><p>'+((descriptions[id]??descriptions.board)[english?1:0])+'</p>'+relevant.map(paramHtml).join('')+
  (id==='button'?'<button class="action-btn primary hold-btn" aria-pressed="false">'+text('按住按钮','Hold button')+'</button>':'')+
  '<div class="inspector-actions"><button class="action-btn" data-action="focus">'+icon('focus',14)+text('放大查看','Focus')+'</button>'+(id==='browser'?'<button class="action-btn primary" data-action="send">'+icon('send',14)+text(lesson.id==='project'?'设置阈值':'发送请求',lesson.id==='project'?'Set threshold':'Send request')+'</button>':id==='reset'?'<button class="action-btn" data-action="reset">'+text('复位程序','Reset sketch')+'</button>':'<button class="action-btn" data-action="run">'+text(status==='running'?'停止程序':'运行后可见',status==='running'?'Stop':'Run sketch')+'</button>')+'</div>';
- $('.inspector-close').onclick=()=>{el.hidden=true;stage.select('');};
+ $('.inspector-close').onclick=()=>{el.hidden=true;inspected='';syncSchematicSelection();stage.reset();};
+ el.querySelectorAll<HTMLButtonElement>('[data-swatch]').forEach((b,i,all)=>{b.onclick=()=>updateParam('color',b.dataset.swatch!);b.onkeydown=e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();const next=all[(i+(['ArrowLeft','ArrowUp'].includes(e.key)?all.length-1:1))%all.length];next.focus();updateParam('color',next.dataset.swatch!);}};});
  el.querySelectorAll<HTMLInputElement|HTMLSelectElement>('[data-param]').forEach(input=>input.oninput=()=>{const p=lesson.params.find(p=>p.key===input.dataset.param)!;updateParam(p.key,p.options?input.value:Number(input.value));});
  const hold=el.querySelector<HTMLButtonElement>('.hold-btn');if(hold){hold.onpointerdown=e=>{e.preventDefault();hold.setPointerCapture(e.pointerId);inputButton(true);hold.setAttribute('aria-pressed','true');};hold.onpointerup=hold.onpointercancel=()=>{inputButton(false);hold.setAttribute('aria-pressed','false');};hold.onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();inputButton(true);hold.setAttribute('aria-pressed','true');}};hold.onkeyup=e=>{if(e.key===' '||e.key==='Enter'){inputButton(false);hold.setAttribute('aria-pressed','false');}};}
+ stage.focus(id);
  el.querySelector<HTMLButtonElement>('[data-action="focus"]')!.onclick=()=>stage.focus(id);
  const action=el.querySelector<HTMLButtonElement>('[data-action="run"]');if(action)action.onclick=()=>{if(status==='running')stop();else void run();openInspector(id);};
  const reset=el.querySelector<HTMLButtonElement>('[data-action="reset"]');if(reset)reset.onclick=()=>{stop();void run();};
  const send=el.querySelector<HTMLButtonElement>('[data-action="send"]');if(send)send.onclick=async()=>{if(status!=='running')await run();model?.request();if(lesson.id==='project')updateParam('threshold',values.threshold);};
 }
-function paramHtml(p:Param){const v=values[p.key];return '<label class="param"><span class="param-head"><span>'+esc(english?p.en:p.label)+'</span><output data-output="'+p.key+'">'+esc(v)+(p.unit?' '+p.unit:'')+'</output></span>'+(p.options?'<select data-param="'+p.key+'" aria-label="'+esc(english?p.en:p.label)+'">'+p.options.map(([v1,zh,en])=>'<option value="'+esc(v1)+'" '+(String(v)===v1?'selected':'')+'>'+esc(english?en:zh)+'</option>').join('')+'</select>':'<input data-param="'+p.key+'" aria-label="'+esc(english?p.en:p.label)+'" type="range" min="'+p.min+'" max="'+p.max+'" step="'+(p.step??1)+'" value="'+esc(v)+'">')+'</label>';}
+function paramHtml(p:Param){const v=values[p.key];if(p.key==='color')return '<div class="param"><div class="param-head"><span>'+text('颜色','Colour')+'</span></div><div class="color-swatches" role="radiogroup" aria-label="'+text('LED 颜色','LED colour')+'">'+p.options!.map(([c,zh,en])=>'<button role="radio" data-swatch="'+c+'" aria-label="'+text(zh,en)+'" aria-checked="'+(v===c)+'" style="--swatch:'+c+'"><i></i></button>').join('')+'</div></div>';return '<label class="param"><span class="param-head"><span>'+esc(english?p.en:p.label)+'</span><output data-output="'+p.key+'">'+esc(v)+(p.unit?' '+p.unit:'')+'</output></span>'+(p.options?'<select data-param="'+p.key+'" aria-label="'+esc(english?p.en:p.label)+'">'+p.options.map(([v1,zh,en])=>'<option value="'+esc(v1)+'" '+(String(v)===v1?'selected':'')+'>'+esc(english?en:zh)+'</option>').join('')+'</select>':'<input data-param="'+p.key+'" aria-label="'+esc(english?p.en:p.label)+'" type="range" min="'+p.min+'" max="'+p.max+'" step="'+(p.step??1)+'" value="'+esc(v)+'">')+'</label>';}
 function appendLog(s:string){const el=$('.serial-logs');const line=document.createElement('div');line.innerHTML='<span class="log-time">'+((model?.time??0)/1000).toFixed(2).padStart(5,'0')+'</span>'+esc(s);el.append(line);while(el.children.length>160)el.firstElementChild!.remove();el.scrollTop=el.scrollHeight;}
 function updateNav(){document.querySelectorAll<HTMLElement>('[data-nav]').forEach(b=>{const selected=menu===b.dataset.nav||(b.dataset.nav==='play'&&status!=='stopped')||(b.dataset.nav==='home'&&!menu&&status==='stopped');b.classList.toggle('active',selected);b.setAttribute('aria-pressed',String(selected));});}
 function setStatus(s:typeof status){status=s;updateNav();const send=document.querySelector<HTMLButtonElement>('[data-action=send]');if(send)send.disabled=s==='loading';const action=document.querySelector<HTMLElement>('[data-action=run]');if(action)action.textContent=text(s==='stopped'?'运行后可见':'停止程序',s==='stopped'?'Run sketch':'Stop');$('#run').innerHTML=icon(s==='stopped'?'play':'stop');$('#run').classList.toggle('running',s!=='stopped');$('#run').setAttribute('aria-label',s==='stopped'?ui[18]:ui[19]);$('.serial-status').textContent=s==='loading'?text('模拟上传中','Simulating upload'):s==='running'?ui[15]:ui[14];$('.serial-head i').classList.toggle('live',s==='running');}
@@ -168,28 +183,27 @@ async function run(){
  model=new Simulation(lesson.id,values,appendLog);model.input(heldInput);setStatus('running');appendLog(text('教学模拟运行中。','Teaching simulation running.'));
  if(!done.has(lesson.id)){done.add(lesson.id);store('done',[...done]);renderCards();}
 }
-function stop(){++runToken;heldInput=false;gain?.gain.setTargetAtTime(0,audio!.currentTime,.015);if(status!=='stopped')appendLog(text('已停止。','Stopped.'));model=undefined;snapshot=undefined;setStatus('stopped');$('.code-line.active')?.classList.remove('active');activeLine=-1;$('.readout').hidden=true;}
-function setLesson(id:string,updateHash=true){const l=lessons.find(l=>l.id===id);if(!l)return;save();stop();lesson=l;values=normalize(l,saved[l.id]??{});stage.setLesson(l,values);Object.assign(stage.settings,settings);$('.inspector').hidden=true;inspected='';renderCards();const card=$('.course-card.active');$('.course-track').scrollLeft=Math.max(0,card.offsetLeft-($('.course-track').clientWidth-card.clientWidth)/2);renderInfo();renderCode();schematic();$('.schematic').hidden=!settings.schematic;$('.serial-logs').replaceChildren();document.title=title()+' · '+ui[0];if(updateHash)history.replaceState(null,'','#'+l.id);menu='';$('.flyout').hidden=true;updateNav();}
-function setSetting(key:string,value:boolean){(settings as Record<string,boolean>)[key]=value;store('settings',settings);Object.assign(stage.settings,settings);if(key==='schematic'){$('.schematic').hidden=!value;schematic();}document.querySelector('[data-view="'+key+'"]')?.setAttribute('aria-checked',String(value));}
+function stop(){++runToken;heldInput=false;gain?.gain.setTargetAtTime(0,audio!.currentTime,.015);if(status!=='stopped')appendLog(text('已停止。','Stopped.'));model=undefined;snapshot=undefined;setStatus('stopped');if(settings.schematic)schematic();$('.code-line.active')?.classList.remove('active');activeLine=-1;$('.readout').hidden=true;}
+function setLesson(id:string,updateHash=true){const l=lessons.find(l=>l.id===id);if(!l)return;save();stop();lesson=l;values=normalize(l,saved[l.id]??{});activeTab='overview';document.querySelectorAll('.expanded-panel').forEach(el=>el.classList.remove('expanded-panel'));$('.code-body').scrollTop=0;$('.serial').style.removeProperty('--serial-height');$('.inspector').hidden=true;Object.assign(stage.settings,settings);stage.setLesson(l,values);inspected='';renderCards();const card=$('.course-card.active');$('.course-track').scrollLeft=Math.max(0,card.offsetLeft-($('.course-track').clientWidth-card.clientWidth)/2);renderInfo();renderCode();schematic();$('.schematic').hidden=!settings.schematic;stage.updateCamera();$('.serial-logs').replaceChildren();document.title=title()+' · '+ui[0];if(updateHash)history.replaceState(null,'','#'+l.id);menu='';$('.flyout').hidden=true;updateNav();}
+function setSetting(key:string,value:boolean){(settings as Record<string,boolean>)[key]=value;store('settings',settings);Object.assign(stage.settings,settings);if(key==='schematic'){$('.schematic').hidden=!value;schematic();stage.updateCamera();}document.querySelector('[data-view="'+key+'"]')?.setAttribute('aria-checked',String(value));}
 function openMenu(kind:string){
  const el=$('.flyout');if(menu===kind&&!el.hidden){el.hidden=true;menu='';updateNav();return;}menu=kind;el.hidden=false;updateNav();
  let body='',heading='';
- if(kind==='book'){heading=ui[3];body=lessons.map((l,i)=>'<button class="menu-row '+(l.id===lesson.id?'active':'')+'" data-lesson="'+l.id+'">'+thumb(l.parts[0]??'board')+'<span>'+(i+1)+'. '+title(l)+'</span><small>'+(done.has(l.id)?'✓':'')+'</small></button>').join('');}
  if(kind==='chip'){heading=ui[4];body=[...stage.entries].map(([id,e])=>'<button class="menu-row" data-component="'+id+'">'+icon('focus',20)+'<span>'+(english?e.en:e.label)+'<small>'+esc((descriptions[id]??descriptions.board)[english?1:0])+'</small></span></button>').join('');}
  if(kind==='settings'){heading=ui[6];body=[['labels','标注','Callout labels','3D 视图中的热点和文字','Cards and pointers around the view'],['flow','电流流动','Current flow','沿导线显示信号与电流方向','Moving dots on the wires'],['grid','地面网格','Floor grid','开发板下方的浅色网格','Faint grid under the board'],['autoRotate','空闲旋转','Turntable','空闲时缓慢转动视角','Rotate the view while idle'],['sound','声音','Sound','让蜂鸣器发出声音','Let the piezo play out loud'],['reducedMotion','减弱动画','Reduce motion','缩短场景和启动过渡','Near-instant transitions']].map(([key,zh,en,desc,descEn])=>'<label class="setting-row"><span>'+text(zh,en)+'<small>'+text(desc,descEn)+'</small></span><input type="checkbox" data-setting="'+key+'" '+((settings as Record<string,boolean>)[key]?'checked':'')+'></label>').join('')+'<button class="reset-progress">'+text('重置进度','Reset progress')+'</button>';}
  if(kind==='globe'){heading=ui[7];body=languages.map(([code,name])=>'<button class="menu-row '+(code===language?'active':'')+'" data-language="'+code+'"><span style="width:30px">'+code.toUpperCase()+'</span>'+name+(code===language?' ✓':'')+'</button>').join('');}
  el.innerHTML='<h2>'+heading+'</h2><button class="flyout-close" aria-label="'+text('关闭菜单','Close menu')+'">'+icon('close')+'</button>'+body;
  $('.flyout-close').onclick=()=>{el.hidden=true;menu='';updateNav();};
- el.querySelectorAll<HTMLElement>('[data-lesson]').forEach(b=>b.onclick=()=>{setLesson(b.dataset.lesson!);$('.course-card.active').scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});});
  el.querySelectorAll<HTMLElement>('[data-component]').forEach(b=>b.onclick=()=>{el.hidden=true;menu='';stage.select(b.dataset.component!);openInspector(b.dataset.component!);});
  el.querySelectorAll<HTMLInputElement>('[data-setting]').forEach(b=>b.onchange=()=>setSetting(b.dataset.setting!,b.checked));
  const reset=el.querySelector<HTMLButtonElement>('.reset-progress');if(reset)reset.onclick=()=>{done.clear();store('done',[]);renderCards();toast(text('学习进度已重置','Progress reset'));};
  el.querySelectorAll<HTMLButtonElement>('[data-language]').forEach(b=>b.onclick=()=>{store('language',b.dataset.language);location.reload();});
 }
-document.querySelectorAll<HTMLElement>('[data-nav]').forEach(b=>b.onclick=()=>{const kind=b.dataset.nav!;if(kind==='home'){stage.reset();$('.flyout').hidden=true;menu='';}else if(kind==='play'){if(status==='stopped')void run();else stop();}else openMenu(kind);});
-$('#rail-toggle').onclick=()=>{const expanded=$('.rail').classList.toggle('expanded');$('#rail-toggle').setAttribute('aria-expanded',String(expanded));};
+function resetView(){$('.inspector').hidden=true;inspected='';syncSchematicSelection();stage.reset();}
+document.querySelectorAll<HTMLElement>('[data-nav]').forEach(b=>b.onclick=()=>{const kind=b.dataset.nav!;if(kind==='home'){resetView();$('.flyout').hidden=true;menu='';}else if(kind==='play'){if(status==='stopped')void run();else stop();}else openMenu(kind);});
+$('#rail-toggle').onclick=()=>{const expanded=$('.rail').classList.toggle('expanded');$('#rail-toggle').setAttribute('aria-expanded',String(expanded));$('#rail-toggle').setAttribute('aria-label',expanded?text('收起侧边栏','Collapse sidebar'):text('展开侧边栏','Expand sidebar'));};
 document.querySelectorAll<HTMLElement>('[data-tab]').forEach(b=>b.onclick=()=>{activeTab=b.dataset.tab!;renderInfo();});
-document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b=>b.onclick=()=>{const id=b.dataset.view!;if(id==='rotateLeft')stage.turn(-1);if(id==='rotateRight')stage.turn(1);if(id==='plus')stage.magnify(1.18);if(id==='minus')stage.magnify(1/1.18);if(id==='reset')stage.reset();if(id==='flow'||id==='schematic')setSetting(id,!(settings as Record<string,boolean>)[id]);$('.minimap').hidden=Math.abs(stage.zoom-1)<.05&&stage.pan.length()<1;});
+document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b=>b.onclick=()=>{const id=b.dataset.view!;if(id==='rotateLeft')stage.turn(-1);if(id==='rotateRight')stage.turn(1);if(id==='plus')stage.magnify(1.18);if(id==='minus')stage.magnify(1/1.18);if(id==='reset')resetView();if(id==='flow'||id==='schematic')setSetting(id,!(settings as Record<string,boolean>)[id]);$('.minimap').hidden=!stage.focused&&Math.abs(stage.zoom-1)<.05&&stage.pan.length()<1;});
 $('.course-arrow.next').onclick=()=>$('.course-track').scrollBy({left:440,behavior:'smooth'});
 $('.course-arrow.prev').onclick=()=>$('.course-track').scrollBy({left:-440,behavior:'smooth'});
 $('#run').onclick=()=>{if(status==='stopped')void run();else stop();};
@@ -205,13 +219,14 @@ $('.minimap').innerHTML='<svg viewBox="0 0 100 65"><path d="M8 8h84v49H8z" fill=
 let mapHeld=false;function panMinimap(e:PointerEvent){const box=$('.minimap').getBoundingClientRect(),center=stage.center();stage.pan.set((e.clientX-box.left)/box.width*120-50-center.x,0,(e.clientY-box.top)/box.height*100-40-center.z);stage.updateCamera();}$('.minimap').onpointerdown=e=>{mapHeld=true;$('.minimap').setPointerCapture(e.pointerId);panMinimap(e);};$('.minimap').onpointermove=e=>{if(mapHeld)panMinimap(e);};$('.minimap').onpointerup=$('.minimap').onpointercancel=()=>{mapHeld=false;};
 window.addEventListener('hashchange',()=>setLesson(location.hash.slice(1),false));
 window.addEventListener('keydown',e=>{
+ if(followDialog.open)return;
  if((e.target as HTMLElement).closest('input,select,textarea'))return;
  if(e.key===' '&&(e.target as HTMLElement).closest('button'))return;
  const key=e.key.toLowerCase();if(key===' '){e.preventDefault();if(status==='stopped')void run();else stop();}
- if(key==='q')stage.turn(-1);if(key==='e')stage.turn(1);if(key==='r')stage.reset();if(key==='+'||key==='=')stage.magnify(1.15);if(key==='-')stage.magnify(1/1.15);
+ if(key==='q')stage.turn(-1);if(key==='e')stage.turn(1);if(key==='r')resetView();if(key==='+'||key==='=')stage.magnify(1.15);if(key==='-')stage.magnify(1/1.15);
  if(key==='w')stage.panBy(0,3);if(key==='s')stage.panBy(0,-3);if(key==='a')stage.panBy(3,0);if(key==='d')stage.panBy(-3,0);
  if(key==='c')setSetting('schematic',!settings.schematic);if(key==='f')setSetting('flow',!settings.flow);
- if(key==='escape'){if(!$('.inspector').hidden){$('.inspector').hidden=true;stage.select('');}else if(!$('.flyout').hidden){$('.flyout').hidden=true;menu='';}else if(document.querySelector('.expanded-panel'))document.querySelectorAll('.expanded-panel').forEach(el=>el.classList.remove('expanded-panel'));else stage.reset();}
+ if(key==='escape'){if(!$('.inspector').hidden){$('.inspector').hidden=true;inspected='';syncSchematicSelection();stage.reset();}else if(!$('.flyout').hidden){$('.flyout').hidden=true;menu='';}else if(document.querySelector('.expanded-panel'))document.querySelectorAll('.expanded-panel').forEach(el=>el.classList.remove('expanded-panel'));else resetView();}
 });
 document.addEventListener('visibilitychange',()=>{if(document.hidden)gain?.gain.setTargetAtTime(0,audio!.currentTime,.01);lastFrame=0;});
 function frame(now:number){
@@ -232,7 +247,7 @@ function frame(now:number){
   else textValue='<strong>GPIO23 · '+(s.led?'HIGH':'LOW')+'</strong>'+text('教学模拟','Teaching simulation');
   if(readout.innerHTML!==textValue)readout.innerHTML=textValue;
  }
- $('.minimap').hidden=Math.abs(stage.zoom-1)<.05&&stage.pan.length()<1;
+ $('.minimap').hidden=!stage.focused&&Math.abs(stage.zoom-1)<.05&&stage.pan.length()<1;
  const viewport=$('.map-viewport');viewport.setAttribute('x',String(18+stage.pan.x*.65));viewport.setAttribute('y',String(9+stage.pan.z*.55));viewport.setAttribute('width',String(65/stage.zoom));viewport.setAttribute('height',String(46/stage.zoom));
  stage.draw(now,snapshot,english);
 }
