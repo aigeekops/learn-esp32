@@ -47,11 +47,11 @@ Open the Local address printed in the terminal. The browser needs WebGL support.
 
 ## Deploy to GitHub
 
-You can publish directly to **GitHub Pages** without renting a server. The repository provides a read-only CI and a manually triggered Pages workflow.
+You can publish directly to **GitHub Pages** without renting a server. The repository provides a read-only CI. Pushing to the `main` branch **automatically triggers** the Pages build and deployment; you can also trigger it manually from Actions.
 
 1. Place the contents of this directory at the GitHub repository root, including `.github/` and the lockfile.
 2. In the repository **Settings → Pages → Build and deployment → Source**, choose **GitHub Actions**.
-3. Open **Actions → Deploy to GitHub Pages → Run workflow**, and select the default branch.
+3. Push (or merge a PR) to `main`, or open **Actions → Deploy to GitHub Pages → Run workflow** and select the default branch.
 4. After the workflow succeeds, visit the site at the address given by the deployment.
 
 Assets use relative paths, so the same `dist/` works for both a user homepage and a repository subdirectory. The Pages site runs the browser teaching model; real-device firmware does not run on GitHub's servers. See [deployment docs](docs/DEPLOYMENT.md) for configuration notes and release checks.

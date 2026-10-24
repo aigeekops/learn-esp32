@@ -47,11 +47,11 @@ npm run dev
 
 ## 部署到 GitHub
 
-可以直接发布到 **GitHub Pages**，无需租用服务器。仓库已提供只读权限的 CI 和手动触发的 Pages 发布工作流。
+可以直接发布到 **GitHub Pages**，无需租用服务器。仓库已提供只读权限的 CI；推送到 `main` 分支会**自动触发** Pages 构建与发布，也可在 Actions 中手动触发。
 
 1. 将本目录内容放在 GitHub 仓库根目录，包括 `.github/` 和锁文件。
 2. 在仓库 **Settings → Pages → Build and deployment → Source** 中选择 **GitHub Actions**。
-3. 打开 **Actions → Deploy to GitHub Pages → Run workflow**，选择默认分支。
+3. 推送（或合并 PR）到 `main`，或打开 **Actions → Deploy to GitHub Pages → Run workflow** 手动触发，选择默认分支。
 4. 工作流成功后，通过 deployment 给出的地址访问站点。
 
 资源使用相对路径，同一份 `dist/` 可用于用户主页和仓库子目录。Pages 中运行的是浏览器教学模型；真实设备固件不在 GitHub 服务器上运行。配置说明与发布检查见 [部署文档](docs/DEPLOYMENT.md)。
