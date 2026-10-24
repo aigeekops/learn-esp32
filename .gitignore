@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.DS_Store
+Thumbs.db
+
+# Generated sketches, compiler logs and standalone packages
+output/
+coverage/
+*.log
+*.tsbuildinfo
+public/LICENSE.txt
+public/THIRD_PARTY_NOTICES.txt
+
+# Local credentials and editor settings
+.env
+.env.*
+!.env.example
+.npmrc
+.vscode/
+.idea/
+
+# One-time transfer artifact, not project source
+TRANSFER_MANIFEST.sha256

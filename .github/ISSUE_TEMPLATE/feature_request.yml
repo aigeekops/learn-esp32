@@ -1,0 +1,17 @@
+name: 改进建议
+description: 说明问题、建议和与当前项目范围的关系。
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 描述具体使用场景及当前哪里不方便。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议的行为
+      description: 如涉及原站交互或 ESP32 技术内容，请附参考资料。
+    validations:
+      required: true

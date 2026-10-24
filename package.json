@@ -1,0 +1,37 @@
+{
+  "name": "learn-esp32",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "prebuild": "node scripts/prepare-notices.mjs",
+    "build:standalone": "npm run build && node scripts/package-standalone.mjs",
+    "firmware:export": "node --experimental-strip-types scripts/export-sketches.mjs",
+    "firmware:check": "npm run firmware:export && node --experimental-strip-types scripts/compile-sketches.mjs",
+    "check:dist": "node scripts/check-distribution.mjs"
+  },
+  "dependencies": {
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "0.186.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
+  },
+  "description": "Interactive ESP32 learning workbench with 16 lessons, 3D circuits and Arduino examples.",
+  "license": "MIT",
+  "engines": {
+    "node": "24.x"
+  },
+  "keywords": [
+    "esp32",
+    "arduino",
+    "education",
+    "threejs",
+    "electronics"
+  ]
+}

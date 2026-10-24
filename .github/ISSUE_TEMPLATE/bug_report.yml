@@ -1,0 +1,36 @@
+name: Bug 报告
+description: 报告界面、课程、接线或示例代码的问题。
+body:
+  - type: markdown
+    attributes:
+      value: 请勿粘贴 Wi-Fi 密码、令牌、真实网络配置或包含私人信息的日志。
+  - type: input
+    id: version
+    attributes:
+      label: 版本或 commit
+      placeholder: 例如 0.1.0，或当前 commit SHA
+    validations:
+      required: true
+  - type: input
+    id: lesson
+    attributes:
+      label: 课程及页面
+      placeholder: 例如 第 9 课 / #display
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 写出操作顺序、参数值和复现频率。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为和实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境与证据
+      description: 浏览器、系统、截图或脱敏日志。真机问题请补充板型、核心版本、器件型号、接线和供电。

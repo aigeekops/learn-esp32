@@ -1,0 +1,91 @@
+{
+  "fqbn": "esp32:esp32:esp32",
+  "core": "3.3.12",
+  "libraries": {
+    "Adafruit SSD1306": "2.5.17",
+    "Adafruit GFX Library": "1.13.0",
+    "Adafruit BusIO": "1.17.4"
+  },
+  "results": [
+    {
+      "id": "board",
+      "passed": true,
+      "seconds": 31.6
+    },
+    {
+      "id": "blink",
+      "passed": true,
+      "seconds": 23.2
+    },
+    {
+      "id": "serial",
+      "passed": true,
+      "seconds": 23.6
+    },
+    {
+      "id": "button",
+      "passed": true,
+      "seconds": 22.9
+    },
+    {
+      "id": "knob",
+      "passed": true,
+      "seconds": 23.3
+    },
+    {
+      "id": "pwm",
+      "passed": true,
+      "seconds": 23.2
+    },
+    {
+      "id": "temperature",
+      "passed": true,
+      "seconds": 23.5
+    },
+    {
+      "id": "timing",
+      "passed": true,
+      "seconds": 22.4
+    },
+    {
+      "id": "display",
+      "passed": true,
+      "seconds": 29.2
+    },
+    {
+      "id": "sound",
+      "passed": true,
+      "seconds": 21.7
+    },
+    {
+      "id": "servo",
+      "passed": true,
+      "seconds": 22
+    },
+    {
+      "id": "alarm",
+      "passed": true,
+      "seconds": 21.6
+    },
+    {
+      "id": "wifi",
+      "passed": true,
+      "seconds": 29.8
+    },
+    {
+      "id": "http",
+      "passed": true,
+      "seconds": 36.8
+    },
+    {
+      "id": "web",
+      "passed": true,
+      "seconds": 36.6
+    },
+    {
+      "id": "project",
+      "passed": true,
+      "seconds": 45.2
+    }
+  ]
+}
