@@ -1,0 +1,18 @@
+{
+  "captured_at": "2026-10-24",
+  "repository": "https://github.com/aigeekops/learn-esp32",
+  "arduino_esp32": "3.3.12",
+  "fqbn": "esp32:esp32:esp32",
+  "course_snapshot_count": 16,
+  "source_sha256": {
+    "src/lessons.ts": "01146b106e8d5729a136efde25fa1037115f4c91e2649c8193da9fa7adabf60d",
+    "src/firmware.ts": "595e314a58bf008c16c975003d7d4b7ef683c27ac7a2e150c14dad18d4dde971"
+  },
+  "note": "source_sha256 identifies the local source used for the tutorial snapshot. It differs from the checked repository source; examples are independent learning material, not a live course mirror.",
+  "snapshot_source": "local tutorial source snapshot; no matching Git commit recorded",
+  "repository_checked_commit": "dcd2ecf",
+  "repository_source_sha256": {
+    "src/lessons.ts": "eb979e8495def913d8360646b2c91791dfba2751f9905c4f1846753a9fdadf8a",
+    "src/firmware.ts": "22f5d908ddefae4831b3a544be87203d446701cef24a2126dc6e449d27f9a9d0"
+  }
+}

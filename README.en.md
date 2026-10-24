@@ -6,7 +6,7 @@
 
 Learn ESP32 in the browser through 3D circuits, live parameter tuning, and Arduino C++ examples. Includes 16 lessons, targeting the **ESP32-DevKitC V4 / ESP32-WROOM-32E (38-pin)** board.
 
-[Curriculum](docs/CURRICULUM.md) · [Contributing](CONTRIBUTING.md) · [MIT License](LICENSE)
+[Curriculum](docs/CURRICULUM.md) · [Programming Guide](tutorials/arduino-esp32-syntax/README.md) · [Contributing](CONTRIBUTING.md) · [MIT License](LICENSE)
 
 ![Learn ESP32 interactive site](docs/images/desktop-board.png)
 
@@ -68,6 +68,12 @@ Learning progress is stored in the visitor's browser and is not synced across de
 | 13–16 | Wi-Fi, HTTP, web control, networked temperature monitoring and alerts |
 
 See [lesson definitions](docs/CURRICULUM.md) for lesson parameters, pins, and the four-tab content.
+
+## Programming Guide
+
+The standalone [Arduino / ESP32 syntax guide](tutorials/arduino-esp32-syntax/README.md) is part of the six-month robotics self-study series. It includes a Chinese article, 16 versioned course snapshots, three exercises, and editable SVG/PNG artwork with its rendering script.
+
+The guide is maintained independently from the live lessons. See its [version record](tutorials/arduino-esp32-syntax/VERSION.json) when comparing lesson order, pins, or APIs.
 
 ## Real Firmware
 

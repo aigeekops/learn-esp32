@@ -1,0 +1,8 @@
+{
+  "name": "learn-esp32-syntax-visuals",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {"render": "node render-assets.mjs"},
+  "dependencies": {"sharp": "0.35.5"}
+}

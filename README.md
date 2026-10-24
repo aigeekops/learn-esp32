@@ -6,7 +6,7 @@
 
 通过 3D 电路、实时调参和 Arduino C++ 示例，在浏览器里学习 ESP32。包含 16 课，目标开发板为 **ESP32-DevKitC V4 / ESP32-WROOM-32E（38 针）**。
 
-[课程内容](docs/CURRICULUM.md) · [参与贡献](CONTRIBUTING.md) · [MIT 许可证](LICENSE)
+[课程内容](docs/CURRICULUM.md) · [语法入门](tutorials/arduino-esp32-syntax/README.md) · [参与贡献](CONTRIBUTING.md) · [MIT 许可证](LICENSE)
 
 ![ESP32 交互学习站](docs/images/desktop-board.png)
 
@@ -68,6 +68,12 @@ npm run dev
 | 13–16 | Wi-Fi、HTTP、网页控制、联网温度监测与告警 |
 
 课程参数、引脚与四页签内容见 [课程定义](docs/CURRICULUM.md)。
+
+## 编程入门文章
+
+[《六个月学机器人⑦：Arduino / ESP32 语法入门，从零读懂并写出程序》](tutorials/arduino-esp32-syntax/article.md) 从变量、分支、循环、函数讲到数组、对象、回调、屏幕和联网，附 16 份课程示例快照与 3 个独立练习。
+
+正文、封面、SVG/PNG 配图、绘图脚本及配套程序统一收在 [独立教程目录](tutorials/arduino-esp32-syntax/README.md)。教程与正在更新的课程实现分别维护，对照课序、引脚和 API 时请核对 [示例版本](tutorials/arduino-esp32-syntax/VERSION.json)。
 
 ## 真机代码
 
