@@ -24,3 +24,16 @@ test('LED, RGB and potentiometer use distinct sockets and electrically correct f
  assert.equal(new Set(['rgb.R','rgb.G','rgb.B','rgb.GND'].map(e=>strip(mountedLeads[e]))).size,4);
  assert.equal(new Set(['pot.VCC','pot.signal','pot.GND'].map(e=>strip(mountedLeads[e]))).size,3);
 });
+
+// One distribution strip uses a different physical hole for each lead.
+test('new multi-part lessons distribute ground and power without sharing sockets',()=>{
+ for(const lesson of lessons.filter(l=>l.parts.some(p=>['ldr','soil','piano'].includes(p)))){
+  const nets=physicalJumpers(lesson),used=new Set<string>();
+  for(const net of nets)for(const endpoint of [net.from,net.to])if(endpoint.startsWith('breadboard.')){
+   const h=jumperSockets[endpoint];assert.ok(h,endpoint);const key=h.row+':'+h.col;assert.ok(!used.has(key),lesson.id+' duplicate '+key);used.add(key);
+   assert.equal(strip(h),strip(jumperSockets[endpoint.startsWith('breadboard.ground')?'breadboard.ground0':'breadboard.power0']));
+  }
+  assert.equal(nets.filter(n=>n.from==='board.GND'||n.to==='board.GND').length,1);
+  assert.notEqual(strip(jumperSockets['breadboard.ground0']),strip(jumperSockets['breadboard.power0']));
+ }
+});

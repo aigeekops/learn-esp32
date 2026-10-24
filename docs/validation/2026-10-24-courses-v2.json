@@ -1,0 +1,79 @@
+{
+  "fqbn": "esp32:esp32:esp32",
+  "core": "3.3.12",
+  "results": [
+    {
+      "id": "knob",
+      "passed": true,
+      "seconds": 25.8,
+      "sourceSha256": "d19e319077475066a9b548547123ee79947cd16f26452fb32f82e5a7fe6a221c"
+    },
+    {
+      "id": "pwm",
+      "passed": true,
+      "seconds": 25.5,
+      "sourceSha256": "2d3f40dfe17a2cad9fa8208c45e272e494ec9c474ca4651f0c95bf87c73765c9"
+    },
+    {
+      "id": "light",
+      "passed": true,
+      "seconds": 27.3,
+      "sourceSha256": "bbe302ee7f20acd4dc670688e5f86dcebe44f83987d4c18fff1a714433caad20"
+    },
+    {
+      "id": "temperature",
+      "passed": true,
+      "seconds": 25.4,
+      "sourceSha256": "42c2b84bc08307ebfd071b9ac9fd3ce9fa547a0f0a5151a709140d099bfb9233"
+    },
+    {
+      "id": "display",
+      "passed": true,
+      "seconds": 33.2,
+      "sourceSha256": "6acc31ae21d02bf3626d726c0e89fc8ffdf2e4f3daa346792614f70b1de9c641"
+    },
+    {
+      "id": "piano",
+      "passed": true,
+      "seconds": 29,
+      "sourceSha256": "71c3e8611abfd1e1fbe9b32b2799352a3c84b0cd20a2cd9902892359e5d26a2b"
+    },
+    {
+      "id": "plant",
+      "passed": true,
+      "seconds": 36.2,
+      "sourceSha256": "581f9c0ed130eb1ac9d46fd54d6a09cfcd127ab41764aabd6bfc70abc5c7e71c"
+    },
+    {
+      "id": "timing",
+      "passed": true,
+      "seconds": 30.5,
+      "sourceSha256": "72662ebe807e183c8f2f86bd0d013cfc37e9161ad475b3ad308c9cbad5074b59"
+    },
+    {
+      "id": "project",
+      "passed": true,
+      "seconds": 59.9,
+      "sourceSha256": "88abf9c83812d36d0d5496195998acf3714f82bf2d05fb4ab96c96d41b9a82da"
+    },
+    {
+      "id": "blink",
+      "passed": true,
+      "seconds": 25.1,
+      "sourceSha256": "ee3848820ba38cf520ca97b89e7bb386685bf33a02b3ca5252e4a138ce1e1754"
+    },
+    {
+      "id": "button",
+      "passed": true,
+      "seconds": 24,
+      "sourceSha256": "6dee0a716afe177eb80a7425dd581480f2168fdc7ca090fbf2723dbabb9ca715"
+    }
+  ],
+  "date": "2026-10-24",
+  "scope": "Eleven changed default sketches; five unchanged sketches were not rebuilt.",
+  "libraries": {
+    "Adafruit SSD1306": "2.5.17",
+    "Adafruit GFX Library": "1.13.0",
+    "Adafruit BusIO": "1.17.4"
+  }
+}

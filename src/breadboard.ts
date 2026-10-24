@@ -23,6 +23,8 @@ export const jumperSockets:Record<string,Hole>={
  'rgb.resistor23':hole(6,9),'rgb.resistor19':hole(8,9),'rgb.resistor18':hole(9,9),'rgb.GND':hole(7,2),
  'led.groundBranch':hole(11,4),'rgb.groundBranch':hole(7,4),
  'pot.VCC':hole(20,0),'pot.signal':hole(21,0),'pot.GND':hole(22,0),
+ ...Object.fromEntries(Array.from({length:5},(_,i)=>['breadboard.ground'+i,hole(26,i)])),
+ ...Object.fromEntries(Array.from({length:5},(_,i)=>['breadboard.power'+i,hole(27,i+5)])),
 };
 export function connectedByStrip(a:string,b:string){
  return Boolean(mountedLeads[a]&&mountedLeads[b]&&strip(mountedLeads[a])===strip(mountedLeads[b]));
@@ -30,6 +32,16 @@ export function connectedByStrip(a:string,b:string){
 
 export function physicalJumpers(lesson:Lesson){
  const groundPart=lesson.parts.includes('rgb')?'rgb':lesson.parts.includes('led')?'led':null;
- return connections(lesson).filter(c=>!connectedByStrip(c.from,c.to)).map(c=>
-  c.from==='pot.GND'&&groundPart?{...c,to:groundPart+'.groundBranch'}:c);
+ const nets=connections(lesson).filter(c=>!connectedByStrip(c.from,c.to));
+ if(lesson.parts.some(p=>['ldr','soil','piano'].includes(p))){
+  let ground=1,power=1;const result=nets.map(c=>{
+   if(c.to==='board.GND')return {...c,to:'breadboard.ground'+ground++};
+   if(c.from==='board.3V3')return {...c,from:'breadboard.power'+power++};
+   return c;
+  });
+  if(ground>1)result.push({from:'board.GND',to:'breadboard.ground0',color:'#505359'});
+  if(power>1)result.push({from:'board.3V3',to:'breadboard.power0',color:'#bb6958'});
+  return result;
+ }
+ return nets.map(c=>c.from==='pot.GND'&&groundPart?{...c,to:groundPart+'.groundBranch'}:c);
 }

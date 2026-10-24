@@ -35,14 +35,14 @@
 @media(min-width:801px){
  .rail.expanded{width:216px;padding:24px 16px 16px;gap:12px;overflow-y:auto;background:#e8e1d0f5}
  .rail.expanded>button{flex-shrink:0;min-height:38px;padding:0 12px}
- .rail.expanded #rail-toggle{margin-bottom:10px}
+ .rail.expanded #rail-toggle{width:36px;height:36px;min-height:36px;padding:0;align-self:flex-start;justify-content:center;margin-bottom:10px}
  .rail.expanded #rail-toggle svg{transform:rotate(180deg)}
  .rail.expanded .wechat-follow{display:none}
- .rail.expanded .rail-wechat{display:block;margin-top:auto;padding:12px 10px 10px;text-align:center;background:#faf7ee;border:1px solid #c8d0bf;border-radius:10px;flex-shrink:0}
+ .rail.expanded .rail-wechat{display:block;margin-top:auto;padding:12px 0 2px;text-align:center;background:transparent;border:0;flex-shrink:0}
  .rail-wechat p{margin:0;color:#738373;font-size:11px;letter-spacing:2px}
  .rail-wechat h2{margin:4px 0 10px;color:#537c68;font-size:19px;font-weight:600;letter-spacing:2px}
  .rail-wechat img{display:block;width:160px;max-width:100%;height:auto;margin:auto}
- .rail.expanded .rail-credit{writing-mode:horizontal-tb;text-align:center;padding:0;font-size:10px;line-height:1.7;flex-shrink:0}
+ .rail.expanded .rail-credit{writing-mode:horizontal-tb;text-align:center;padding:4px 0 0;font-size:10px;line-height:1.7;flex-shrink:0;color:#7c8179;opacity:1}
  .rail.expanded~.flyout{left:232px}
 }
 
@@ -59,3 +59,9 @@
 .learning:has(> .expanded-panel)>.panel:not(.expanded-panel){display:none}
 .learning>.expanded-panel{height:100%;min-height:0;flex:1}
 @media(max-width:800px){.learning:has(> .expanded-panel){height:min(692px,calc(100dvh - 100px));min-height:310px}}
+
+/* Direct instrument controls stay inside the existing component inspector. */
+.piano-keys{display:flex;gap:3px;margin:10px 0;touch-action:none}
+.piano-keys button{flex:1;min-width:0;height:72px;padding:5px 0;border:1px solid #babfae;border-radius:0 0 5px 5px;background:#faf7ed;font-size:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:9px;user-select:none;touch-action:none}
+.piano-keys small{font-size:9px;color:#8d9487}.piano-keys button[aria-pressed=true]{background:#a1c6bc;transform:translateY(3px);border-color:#5c8f84}
+.device-preview{border:1px solid #cbd0bf;border-radius:7px;padding:10px;margin:10px 0;background:#eef0e5}.device-preview b{display:block;font-size:10px;color:#6c8075}.device-preview strong{display:block;font-size:18px;margin-top:8px;color:#527d73}.device-preview pre{white-space:pre-wrap;overflow-wrap:anywhere;font:10px/1.6 ui-monospace,monospace;margin:8px 0 0;max-height:130px;overflow:auto}

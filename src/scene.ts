@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {buildLearningPart} from './learning-parts.ts';
 import { boardLeft,boardRight } from './lessons.ts';
 import type { Lesson, Part, Values } from './lessons.ts';
 import type { Snapshot } from './simulation.ts';
@@ -15,9 +16,9 @@ export class Workbench{
  private circuitBounds=[new T.Box3(new T.Vector3(-14,-2,-26),new T.Vector3(14,10,26))];private focusId='';private viewHeight=125;private desiredHeight=125;
  private assembly?:{start:number;board:T.Group;fromX:number;toX:number;incoming:{group:T.Object3D;position:T.Vector3;delay:number}[];outgoing:T.Group;duration:number};private materials:T.Material[]=[]; tags:HTMLDivElement; labelNodes=new Map<string,HTMLButtonElement>(); lesson!:Lesson; values:Values={};
  grid:T.GridHelper;private watermark:T.Mesh; settings={labels:true,grid:true,flow:true,autoRotate:false,reducedMotion:false};
- onSelect:(id:string)=>void; onInput:(key:string,v:number)=>void; onButton:(held:boolean)=>void;
- constructor(public host:HTMLElement,callbacks:{select:(id:string)=>void;input:(key:string,v:number)=>void;button:(held:boolean)=>void}){
-  this.onSelect=callbacks.select;this.onInput=callbacks.input;this.onButton=callbacks.button;
+ onSelect:(id:string)=>void; onInput:(key:string,v:number)=>void; onButton:(held:boolean)=>void;onKey:(index:number,held:boolean)=>void;
+ constructor(public host:HTMLElement,callbacks:{select:(id:string)=>void;input:(key:string,v:number)=>void;button:(held:boolean)=>void;key:(index:number,held:boolean)=>void}){
+  this.onSelect=callbacks.select;this.onInput=callbacks.input;this.onButton=callbacks.button;this.onKey=callbacks.key;
   this.renderer=new T.WebGLRenderer({antialias:true,alpha:true});this.renderer.setPixelRatio(Math.min(devicePixelRatio,2));this.renderer.setClearColor(0,0);this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFShadowMap;
   this.renderer.outputColorSpace=T.SRGBColorSpace;this.renderer.domElement.setAttribute('aria-label','交互式 ESP32 3D 视图：拖动平移，Q/E 旋转，滚轮缩放');this.renderer.domElement.setAttribute('role','img');this.renderer.domElement.tabIndex=0;this.host.append(this.renderer.domElement);
   this.scene.add(this.root,new T.HemisphereLight(0xfffcf2,0xb6a68b,2));
@@ -92,6 +93,7 @@ export class Workbench{
  }
  private oledTexture:{ctx:CanvasRenderingContext2D;map:T.CanvasTexture}|null=null;
  private oledContent='';
+ private browserTexture:{ctx:CanvasRenderingContext2D;map:T.CanvasTexture}|null=null;private browserContent='';
  breadboard(){
   const g=new T.Group();g.position.set(breadboard.x,0,breadboard.z);this.root.add(g);
   this.box(g,43,1.5,77,0,-.45,0,0xe7e4d8);
@@ -104,6 +106,11 @@ export class Workbench{
   }g.add(holes);
   for(let col=0;col<10;col++){const [x]=holePosition({row:0,col});this.text(g,'abcdefghij'[col],x-breadboard.x,.82,-36.5,1.8,1.7,'#777d76');}
   for(let row=0;row<breadboard.rows;row++){const z=holePosition({row,col:0})[2]-breadboard.z;this.text(g,String(row+1),-16,.82,z,1.7,1.3,'#777d76');}
+  if(this.lesson.parts.some(p=>['ldr','soil','piano'].includes(p))){
+   const ground=holePosition(jumperSockets['breadboard.ground0']),power=holePosition(jumperSockets['breadboard.power4']);
+   this.text(g,'GND',ground[0]-breadboard.x,1.03,ground[2]-breadboard.z-2.6,9,2,'#58635c');
+   if(this.lesson.parts.some(p=>['ldr','soil','oled','pot','sensor'].includes(p)))this.text(g,'3V3',power[0]-breadboard.x,1.03,power[2]-breadboard.z+2.6,9,2,'#b46e58');
+  }
   this.addEntry('breadboard',g,'面包板','Breadboard',2);return g;
  }
  private lead(g:T.Object3D,points:T.Vector3[],radius=.16){
@@ -136,8 +143,9 @@ export class Workbench{
   if(id==='led'||id==='rgb')return this.mountedLight(id);
   if(id==='pot'){const p=holePosition(mountedLeads['pot.signal']);x=p[0]+4;z=p[2];}
   const g=new T.Group();g.position.set(x,1.6,z);this.root.add(g);
-  const names:Record<Part,[string,string]>={led:['5 mm LED','5 mm LED'],button:['按钮','Button'],pot:['电位器','Potentiometer'],rgb:['RGB LED','RGB LED'],sensor:['TMP36 温度','TMP36'],oled:['OLED 屏幕','OLED'],buzzer:['蜂鸣器','Piezo'],servo:['舵机','Servo'],router:['路由器','Router'],browser:['浏览器','Browser']};
-  this.addEntry(id,g,...names[id]);
+  const names:Record<Part,[string,string]>={led:['5 mm LED','5 mm LED'],button:['按钮','Button'],pot:['电位器','Potentiometer'],rgb:['RGB LED','RGB LED'],sensor:['TMP36 温度','TMP36'],oled:['OLED 屏幕','OLED'],buzzer:['蜂鸣器','Piezo'],servo:['舵机','Servo'],router:['路由器','Router'],browser:['设备网页','Device webpage'],ldr:['光敏分压模块','LDR divider'],lamp:['台灯','Desk lamp'],piano:['八键钢琴','Eight-key piano'],soil:['土壤传感器','Soil sensor'],plant:['智能植物','Smart plant'],watering:['洒水壶','Watering can']};
+  this.addEntry(id,g,...names[id],id==='plant'?32:id==='soil'?30:id==='lamp'?24:6);
+  if(buildLearningPart(this,id,g))return g;
   if(id==='button'){
    this.box(g,7,2.5,7,0,1.2,0,0x393e48);this.box(g,6.4,.35,6.4,0,2.6,0,0xa9adac);this.cylinder(g,2.3,1.6,0,3.6,0,0xb85545);
    for(const a of [-3.7,3.7])for(const b of [-2,2])this.box(g,1.7,.3,.7,a,0,b,0xb7b5a8,false);
@@ -163,7 +171,7 @@ export class Workbench{
    for(const xx of [-7,7])this.cylinder(g,.55,14,xx,9,4,0x393f48,8);
    this.text(g,'Wi-Fi  2.4G',0,3.6,0,14,5,'#56615f');
   }else if(id==='browser'){
-   this.box(g,24,1,19,0,1,0,0xb3b7b2);this.text(g,'ESP32\n192.168.4.23\nDEVICE / API',0,1.7,0,22,16,'#467d7f','#f0ecdf');
+   this.box(g,28,1,23,0,1,0,0xb3b7b2);const screen=this.text(g,'ESP32\nDEVICE WEBPAGE',0,1.7,0,26,21,'#467d7f','#f0ecdf');this.browserTexture={ctx:screen.ctx,map:screen.map};this.browserContent='';
   }
   return g;
  }
@@ -183,14 +191,16 @@ export class Workbench{
   const boardEntries=[...this.entries].filter(([,entry])=>{let node:T.Object3D|null=entry.group;while(node){if(node===board)return true;node=node.parent;}return false;});
   const pins=new Map(this.pins),previousX=this.boardX,outgoing=new T.Group();
   for(const child of [...this.root.children])if(child!==board)outgoing.add(child);
-  this.scene.add(outgoing);this.root.clear();this.entries.clear();this.pins.clear();this.lights=[];this.flows=[];this.materials=[];this.oledTexture=null;this.selected='';this.lesson=l;this.values=values;this.boardX=l.parts.length?-28:0;
+  this.scene.add(outgoing);this.root.clear();this.entries.clear();this.pins.clear();this.lights=[];this.flows=[];this.materials=[];this.oledTexture=null;this.browserTexture=null;this.selected='';this.lesson=l;this.values=values;this.boardX=l.parts.length?-28:0;
   if(board){board.position.x=this.boardX;this.root.add(board);for(const [id,e] of boardEntries)this.entries.set(id,e);for(const [id,p] of pins)this.pins.set(id,p.clone().add(new T.Vector3(this.boardX-previousX,0,0)));}
   else this.board();
-  if(l.parts.some(p=>!['router','browser'].includes(p)))this.breadboard();
-  const positions:Record<string,[number,number]>={led:[14,-8],rgb:[14,-8],button:[27,7],pot:[25,16],sensor:[11,10],oled:[37,18],buzzer:[31,-13],servo:[25,0],router:[20,40],browser:[47,-17]};
+  if(l.parts.some(p=>!['router','browser','plant','watering','lamp','soil','piano'].includes(p)))this.breadboard();
+  const positions:Record<string,[number,number]>={led:[14,-8],rgb:[14,-8],button:[27,7],pot:[25,16],sensor:[11,10],oled:[37,18],buzzer:[31,-13],servo:[25,0],router:[20,40],browser:[46,-35],ldr:[29,8],lamp:[60,-3],piano:[35,0],soil:[59,9],plant:[64,9],watering:[57,35]};
   if(l.parts.length===1&&!['router','browser'].includes(l.parts[0]))positions[l.parts[0]]=[24,0];
   if(l.id==='display'){positions.oled=[29,2];positions.sensor=[13,-14];}
-  if(l.id==='pwm'){positions.rgb=[20,-10];positions.pot=[29,13];}
+  if(l.id==='pwm'){positions.rgb=[20,-10];}
+  if(l.id==='piano')positions.buzzer=[32,20];
+  if(l.id==='plant'||l.id==='project'){positions.oled=[28,16];positions.buzzer=[39,-15];positions.router=[4,43];}
   for(const id of l.parts){const [x,z]=positions[id];this.part(id,x,z);}
   if(l.parts.includes('servo')){
    const supply=new T.Group();supply.position.set(43,1.5,-16);this.root.add(supply);
@@ -198,7 +208,7 @@ export class Workbench{
   }
   for(const net of physicalJumpers(l)){const part=(net.from.startsWith('board.')?net.to:net.from).split('.')[0],pin=net.to.endsWith('.groundBranch')?'GND':(net.from.startsWith('board.')?net.from:net.to).split('.')[1];this.wire(this.terminal(net.from),this.terminal(net.to),net.color,part,pin);}
   this.tags.innerHTML='<svg class="tag-leaders" aria-hidden="true"></svg>';this.labelNodes.clear();
-  const ids:string[]=l.parts.length?[...l.parts,...l.pins.filter(p=>p.target!=='board').map(p=>'pin-'+p.pin),...(l.parts.includes('led')?['resistor']:[]),...(l.parts.includes('servo')?['supply']:[])]:['usb','module','board','power','reset','boot'];
+  const ids:string[]=l.parts.length?[...l.parts,...l.pins.filter(p=>p.target!=='board').slice(0,l.id==='piano'?2:99).map(p=>'pin-'+p.pin),...(l.parts.includes('led')?['resistor']:[]),...(l.parts.includes('servo')?['supply']:[])]:['usb','module','board','power','reset','boot'];
   for(const id of new Set(ids))this.addTag(id);
   this.circuitBounds=this.meshBounds(this.root);
   this.watermark.position.set(l.parts.length?5:0,-1.85,l.parts.length?49:35);
@@ -239,6 +249,9 @@ export class Workbench{
   const socket=jumperSockets[endpoint];if(socket)return new T.Vector3(...holePosition(socket));
   const terminals:Record<string,Record<string,[number,number,number]>>={
    button:{signal:[-4.4,0,-2],GND:[4.4,0,-2]},
+   ldr:{VCC:[-2,2.5,7],signal:[0,2.5,7],GND:[2,2.5,7]},
+   soil:{VCC:[-2,30,0],signal:[0,30,0],GND:[2,30,0]},
+   piano:{...Object.fromEntries(Array.from({length:8},(_,i)=>['key'+i,[-26.25+i*7.5,2,-8.5] as [number,number,number]])),GND:[30,2,-8.5]},
    sensor:{VCC:[-1.7,-1.5,0],signal:[0,-1.5,0],GND:[1.7,-1.5,0]},
    oled:{GND:[-4.5,3.5,8],VCC:[-1.5,3.5,8],SCL:[1.5,3.5,8],SDA:[4.5,3.5,8]},
    buzzer:{signal:[2,-.7,0],GND:[-2,-.7,0]},servo:{signal:[-4,1,-6],VCC:[-4,1,-4],GND:[-4,1,-2]},
@@ -378,6 +391,8 @@ export class Workbench{
   if((e.target as HTMLElement).closest('button,input,select,.inspector,.schematic,.toolbar,.readout'))return;
   const part=this.pick(e.clientX,e.clientY,false);this.setHover('');this.pointer={x:e.clientX,y:e.clientY,moved:false,mode:e.button===2||e.shiftKey?'rotate':'pan',part};
   if(part==='button'){this.onButton(true);this.pointer.mode='button';}
+  if(part==='watering'){this.onButton(true);this.pointer.mode='water';}
+  if(part?.startsWith('key-')){this.onKey(Number(part.slice(4)),true);this.pointer.mode='key';}
   if(part==='pot')this.pointer.mode='pot';
   if(part==='servo')this.pointer.mode='servo';
  }
@@ -389,8 +404,8 @@ export class Workbench{
   else if(p.mode==='pan'){const amount=this.viewHeight/this.host.clientHeight;const right=new T.Vector3(Math.cos(this.angle),0,-Math.sin(this.angle));const up=new T.Vector3(-Math.sin(this.elevation)*Math.sin(this.angle),Math.cos(this.elevation),-Math.sin(this.elevation)*Math.cos(this.angle));this.pan.addScaledVector(right,-dx*amount).addScaledVector(up,dy*amount);this.updateCamera();}
   p.x=e.clientX;p.y=e.clientY;
  }
- cancel(){if(this.pointer?.mode==='button')this.onButton(false);this.pointer=null;this.setHover('');}
- up(){const p=this.pointer;if(!p)return;if(p.mode==='button')this.onButton(false);if(!p.moved&&p.part){this.select(p.part);this.onSelect(p.part);}this.pointer=null;}
+ cancel(){if(this.pointer?.mode==='button'||this.pointer?.mode==='water')this.onButton(false);if(this.pointer?.mode==='key')this.onKey(Number(this.pointer.part!.slice(4)),false);this.pointer=null;this.setHover('');}
+ up(){const p=this.pointer;if(!p)return;if(p.mode==='button'||p.mode==='water')this.onButton(false);if(p.mode==='key')this.onKey(Number(p.part!.slice(4)),false);if(!p.moved&&p.part){this.select(p.part);this.onSelect(p.part);}this.pointer=null;}
  draw(time:number,s:Snapshot|undefined,english=false){
   this.restoreBounce();
   if(this.assembly)this.animateAssembly(time-this.assembly.start);
@@ -402,7 +417,24 @@ export class Workbench{
   const b=this.entries.get('button');if(b)b.group.scale.y=s?.pressed ? .78 : 1;
   const pot=this.entries.get('pot');if(pot){const marker=pot.group.getObjectByName('marker');if(marker){const a=(Number(this.values.knob??50)/100-.5)*Math.PI*1.5;marker.position.x=Math.sin(a);marker.position.z=-Math.cos(a);marker.rotation.y=-a;}}
   const servo=this.entries.get('servo');if(servo){const arm=servo.group.getObjectByName('arm');if(arm)arm.rotation.y=s?.angle??(Number(this.values.pulse??1500)-1500)/1000*Math.PI;}
-  if(this.oledTexture){const text=s?.oled.join('\n')??'ESP32 MONITOR\n— C\nSTOPPED';if(text!==this.oledContent){this.oledContent=text;const {ctx,map}=this.oledTexture;ctx.fillStyle='#162b30';ctx.fillRect(0,0,512,256);ctx.fillStyle='#b5e1dc';ctx.font='bold 40px monospace';ctx.textAlign='left';text.split('\n').forEach((line,i)=>ctx.fillText(line,20,50+i*55));map.needsUpdate=true;}}
+  const garden=this.entries.get('plant');
+  if(garden){
+   const wet=s?.soilWetness??Number(this.values.moisture??55);garden.group.traverse(o=>{if(o.userData.leaf){o.rotation.z=(wet<30?.8:wet>85?.3:0)*Number(o.userData.side);const m=o as T.Mesh;(m.material as T.MeshStandardMaterial).color.set(wet<30?'#a19b5d':'#6b9b65');}});
+   const soil=garden.group.getObjectByName('soil-surface') as T.Mesh;(soil.material as T.MeshStandardMaterial).color.set(wet<30?'#a27d55':wet>80?'#493c30':'#72553b');
+  }
+  const watering=this.entries.get('watering');if(watering){
+   watering.group.rotation.z=s?.watering?-.25:0;watering.group.updateWorldMatrix(true,false);
+   const end=garden?watering.group.worldToLocal(garden.group.localToWorld(new T.Vector3(0,13,0))):new T.Vector3(12,-4,-18);
+   for(let i=0;i<9;i++){const drop=watering.group.getObjectByName('water-drop-'+i)!;drop.visible=!!s?.watering;drop.position.copy(new T.Vector3(9,10,-10).lerp(end,((time/650+i/9)%1)));}
+  }
+  for(let i=0;i<8;i++){const key=this.entries.get('key-'+i);if(key){const cap=key.group.getObjectByName('key-cap') as T.Mesh;key.group.position.y=s?.noteIndex===i?-.8:0;(cap.material as T.MeshStandardMaterial).color.set(s?.noteIndex===i?'#a1c6bc':'#f4efdf');}}
+  const lamp=this.entries.get('lamp');if(lamp){const pool=lamp.group.getObjectByName('lamp-pool') as T.Mesh;(pool.material as T.MeshStandardMaterial).opacity=Number(this.values.light??75)/100*.45;const bulb=lamp.group.getObjectByName('lamp-bulb') as T.Mesh;(bulb.material as T.MeshStandardMaterial).emissive.set('#ffe0a0');(bulb.material as T.MeshStandardMaterial).emissiveIntensity=Number(this.values.light??75)/100;}
+  if(this.oledTexture){
+   const text=s?.oled.join('\n')??'ESP32\nRUN TO START';
+   if(text!==this.oledContent){this.oledContent=text;const {ctx,map}=this.oledTexture;ctx.fillStyle='#162b30';ctx.fillRect(0,0,512,256);ctx.fillStyle='#b5e1dc';ctx.textAlign='left';const lines=text.split('\n');ctx.font='bold 30px monospace';ctx.fillText(lines[0],18,34);ctx.font='bold 65px monospace';ctx.fillText(lines[1]??'',18,109);ctx.strokeStyle='#b5e1dc';ctx.lineWidth=3;ctx.strokeRect(18,133,472,32);ctx.fillRect(24,139,460*(s?.displayValue??0)/100,20);ctx.font='bold 38px monospace';ctx.fillText(lines[2]??'',18,215);map.needsUpdate=true;}
+  }
+  if(this.browserTexture){const text=this.lesson.id==='project'?'ESP32 GARDEN\n'+(s?s.moisture+'%':'—%')+'  '+(s?.network??'STOPPED')+'\n'+(s&&s.moisture<Number(this.values.thirsty)?'Water me!':'Happy :)'):this.lesson.id==='http'?'ESP32 THERMOMETER\n'+(s?s.temperature.toFixed(1)+' C':'— C')+'\nGET /api/state':'ESP32 LED\n'+(s?.led?'ON':'OFF')+'\nPOST /api/led';if(text!==this.browserContent){this.browserContent=text;const {ctx,map}=this.browserTexture;ctx.fillStyle='#f0ecdf';ctx.fillRect(0,0,512,256);ctx.fillStyle='#467d7f';ctx.textAlign='left';ctx.font='bold 32px monospace';text.split('\n').forEach((line,i)=>ctx.fillText(line,18,50+i*65));map.needsUpdate=true;}}
+
   for(const {curve,dots,part,pin,tube,count} of this.flows)dots.forEach((dot,i)=>{const active=!s?false:part==='led'?s.led:part==='button'?s.pressed:part==='buzzer'?s.frequency>0:part==='rgb'&&['23','19','18'].includes(pin)?s.rgb[['23','19','18'].indexOf(pin)]>0:true;dot.visible=active&&this.settings.flow&&tube.geometry.drawRange.count>=count;dot.position.copy(curve.getPoint((time/1800+i/3)%1));});
   this.animateHover(time);this.root.updateMatrixWorld(true);this.drawInteraction(english);
   const placed:{x:number;y:number;w:number;h:number}[]=[];

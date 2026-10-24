@@ -1,4 +1,5 @@
 import type {Lesson,Values} from './lessons.ts';
+import {pianoPins,noteNames} from './lessons.ts';
 
 export interface Connection {from:string;to:string;color:string;}
 export function connections(l:Lesson):Connection[]{
@@ -7,19 +8,19 @@ export function connections(l:Lesson):Connection[]{
  for(const p of l.pins){
   if(p.target==='led')wire('board.'+p.pin,'led.resistorIn',p.color);
   else if(p.target==='rgb')wire('board.'+p.pin,'rgb.resistor'+p.pin,p.color);
-  else if(p.target!=='board')wire('board.'+p.pin,p.target+'.'+(p.target==='oled'?(p.pin==='21'?'SDA':'SCL'):'signal'),p.color);
+  else if(p.target!=='board')wire('board.'+p.pin,p.target+'.'+(p.target==='oled'?(p.pin==='21'?'SDA':'SCL'):p.target==='piano'?'key'+pianoPins.indexOf(p.pin):'signal'),p.color);
  }
  for(const part of l.parts){
-  if(['router','browser'].includes(part))continue;
+  if(['router','browser','lamp','plant','watering'].includes(part))continue;
   wire(part+'.GND','board.GND','#505359');
-  if(['pot','sensor','oled'].includes(part))wire('board.3V3',part+'.VCC','#bb6958');
+  if(['pot','sensor','oled','ldr','soil'].includes(part))wire('board.3V3',part+'.VCC','#bb6958');
   if(part==='led')wire('led.resistorOut','led.anode','#c87748');
   if(part==='rgb')for(const [pin,ch,color] of [['23','R','#c87748'],['19','G','#69a47c'],['18','B','#7196c2']])wire('rgb.out'+pin,'rgb.'+ch,color);
   if(part==='servo'){wire('supply.positive','servo.VCC','#bb6958');wire('supply.negative','board.GND','#505359');}
  }
  return result;
 }
-const names:Record<string,[string,string]>={led:['LED','LED'],button:['按钮','Button'],pot:['10 kΩ 电位器','10 kΩ pot'],rgb:['共阴极 RGB','RGB LED'],sensor:['TMP36','TMP36'],oled:['SSD1306 OLED','SSD1306 OLED'],buzzer:['无源压电片','Piezo'],servo:['舵机','Servo']};
+const names:Record<string,[string,string]>={led:['LED','LED'],button:['按钮','Button'],pot:['10 kΩ 电位器','10 kΩ pot'],rgb:['共阴极 RGB','RGB LED'],sensor:['TMP36','TMP36'],oled:['SSD1306 OLED','SSD1306 OLED'],buzzer:['无源压电片','Piezo'],servo:['舵机','Servo'],piano:['八键钢琴','Piano'],ldr:['光敏分压','LDR divider'],soil:['土壤传感器','Soil sensor']};
 export function circuitSvg(l:Lesson,v:Values,english:boolean):string{
  const rows=l.pins.filter(p=>p.target!=='board'),h=Math.max(164,rows.length*58+96);
  const line=(d:string,color='#505359',className='')=>'<path class="'+className+'" d="'+d+'" fill="none" stroke="'+color+'" stroke-width="1.6"/>';
@@ -36,8 +37,14 @@ export function circuitSvg(l:Lesson,v:Values,english:boolean):string{
    body+=hit(p.target,p.target==='rgb'?'RGB LED':'LED',200,y-28,83,51,line('M194 '+y+'h22',p.color)+'<path class="led-emitter" d="M216 '+(y-7)+'v14l14 -7Z" fill="none" stroke="#505359" stroke-width="1.6"/>'+line('M230 '+(y-7)+'v14m0 -7h27v9')+line('M220 '+(y-11)+'l6 -6m-1 9 6 -6')+ground(257,y+9)+label(272,y+4,p.target==='rgb'?'RGB '+({'23':'R','19':'G','18':'B'}[p.pin]??''):'LED',12));
   }else if(p.target==='button'){
    body+=hit('button',english?'Button':'按钮',138,y-21,174,49,line('M142 '+y+'h20',p.color)+'<path class="switch-lever" data-open="M162 '+(y-3)+'l20 -11" data-closed="M162 '+y+'h20" d="M162 '+(y-3)+'l20 -11" fill="none" stroke="'+p.color+'" stroke-width="1.6"/>'+line('M182 '+y+'h31v9',p.color)+ground(213,y+9)+label(237,y+4,english?'Button':'按钮',12))+label(104,y+24,'INPUT_PULLUP',10);
+  }else if(p.target==='piano'){
+   const key=pianoPins.indexOf(p.pin),name=noteNames[key];
+   body+=hit('key-'+key,name,138,y-21,174,49,line('M142 '+y+'h20',p.color)+'<path class="switch-lever" data-piano-key="'+key+'" data-open="M162 '+(y-3)+'l20 -11" data-closed="M162 '+y+'h20" d="M162 '+(y-3)+'l20 -11" fill="none" stroke="'+p.color+'" stroke-width="1.6"/>'+line('M182 '+y+'h31v9',p.color)+ground(213,y+9)+label(237,y+4,name,12))+label(104,y+24,'INPUT_PULLUP',10);
+  }else if(p.target==='ldr'){
+   body+=line('M142 '+y+'h65',p.color)+hit('ldr',english?'Light dependent resistor':'光敏电阻',188,y-32,136,33,line('M207 '+y+'v-7l-5 -3 10 -5 -10 -5 5 -3v-7')+label(218,y-15,'LDR',12)+label(257,y-25,'3V3',10));
+   body+=hit('light-resistor','10 kΩ',188,y+1,136,38,line('M207 '+y+'v5l-5 3 10 5 -10 5 5 3v4')+ground(207,y+25)+label(222,y+19,'10 kΩ',12));
   }else{
-   const terminal=p.target==='oled'?(p.pin==='21'?'SDA':'SCL'):p.target==='servo'?'SIG':p.target==='sensor'?'VOUT':p.target==='pot'?'WIPER':'+';
+   const terminal=p.target==='oled'?(p.pin==='21'?'SDA':'SCL'):p.target==='servo'?'SIG':p.target==='sensor'?'VOUT':p.target==='soil'?'AOUT':p.target==='pot'?'WIPER':'+';
    body+=hit(p.target,names[p.target]?.[english?1:0]??p.target,142,y-20,210,40,line('M142 '+y+'h14',p.color)+'<rect x="156" y="'+(y-15)+'" width="190" height="32" rx="4" fill="#f4efdf" stroke="#637a78"/>'+label(164,y+5,(names[p.target]?.[english?1:0]??p.target)+' · '+terminal,11));
   }
   body+='<text data-level x="101" y="'+(y+16)+'" font-family="monospace" font-size="10" fill="#57847f"></text></g>';

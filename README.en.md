@@ -15,7 +15,7 @@ Learn ESP32 in the browser through 3D circuits, live parameter tuning, and Ardui
 - 3D board and components: pan, rotate, zoom, pick, inspector, and focus.
 - Parameters, example code, schematics, scenarios, and serial feedback are linked together.
 - Four lesson tabs, code copy, simulated run/stop, settings, and local learning progress.
-- Classroom demos for Wi-Fi, HTTP, web control, and networked temperature alerts.
+- Classroom demos for knob dimming, a night light, a mini piano, a smart plant, Wi-Fi, HTTP, and web control.
 - Lessons are in Chinese; English instructions and a 13-language UI entry are provided. Full lesson text for the other 11 languages is not yet translated.
 
 **This is a parametric teaching model.** It does not execute arbitrary C++, does not connect to your computer's Wi-Fi or a real ESP32, and does not simulate breadboard hole conductivity. Real hardware requires separate compilation, flashing, and wiring. It is an independent community learning project.
@@ -62,10 +62,10 @@ Learning progress is stored in the visitor's browser and is not synced across de
 
 | Lesson | Content |
 | --- | --- |
-| 01–04 | Meet the ESP32, LED, serial, button |
-| 05–08 | ADC knob, RGB/PWM, temperature, non-blocking control |
-| 09–12 | OLED, buzzer, servo, state-machine alerts |
-| 13–16 | Wi-Fi, HTTP, web control, networked temperature monitoring and alerts |
+| 01–04 | Meet the ESP32, blink, button, knob dimming |
+| 05–08 | RGB mixing, night light, temperature alarm, OLED |
+| 09–12 | Mini piano, servo, smart plant, non-blocking control |
+| 13–16 | Wi-Fi, web temperature, web LED control, connected plant monitor |
 
 See [lesson definitions](docs/CURRICULUM.md) for lesson parameters, pins, and the four-tab content.
 
@@ -77,7 +77,7 @@ The guide is maintained independently from the live lessons. See its [version re
 
 ## Real Firmware
 
-Baseline is Arduino-ESP32 **3.3.12**, FQBN **`esp32:esp32:esp32`**, serial **115200 baud**. Lessons 9 and 16 depend on:
+Baseline is Arduino-ESP32 **3.3.12**, FQBN **`esp32:esp32:esp32`**, serial **115200 baud**. Lessons 8, 11, and 16 depend on:
 
 - Adafruit SSD1306 **2.5.17**
 - Adafruit GFX Library **1.13.0**
