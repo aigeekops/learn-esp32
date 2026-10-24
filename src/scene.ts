@@ -35,9 +35,9 @@ export class Workbench{
   this.host.addEventListener('pointerleave',()=>this.setHover(''));
   this.host.addEventListener('pointerdown',e=>this.down(e));
   window.addEventListener('pointermove',e=>this.move(e));window.addEventListener('pointerup',()=>this.up());window.addEventListener('pointercancel',()=>this.cancel());window.addEventListener('blur',()=>this.cancel());
-  this.host.addEventListener('wheel',e=>{e.preventDefault();this.zoom=Math.max(.4,Math.min(5,this.zoom*Math.exp(-e.deltaY*.001)));this.updateCamera();},{passive:false});
-  this.host.addEventListener('dblclick',e=>{const id=this.pick(e.clientX,e.clientY,false);if(id)this.focus(id);else this.reset();});
-  this.host.addEventListener('contextmenu',e=>e.preventDefault());
+  this.renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();this.zoom=Math.max(.4,Math.min(5,this.zoom*Math.exp(-e.deltaY*.001)));this.updateCamera();},{passive:false});
+  this.renderer.domElement.addEventListener('dblclick',e=>{const id=this.pick(e.clientX,e.clientY,false);if(id)this.focus(id);else this.reset();});
+  this.renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
   new ResizeObserver(()=>this.resize()).observe(host);this.resize();
  }
  private desktopWatermark(){

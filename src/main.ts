@@ -116,9 +116,11 @@ function showExecution(s:Snapshot){
 }
 function syncSchematicSelection(){document.querySelectorAll<SVGElement>('[data-circuit-part]').forEach(el=>{const selected=el.dataset.circuitPart===inspected||(el.dataset.circuitPart==='power'&&/^pin-(GND|3V3|5V)/.test(inspected));el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));});}
 function schematic(){
- $('.schematic').innerHTML='<div class="schematic-head"><b>'+text('原理图','Schematic')+'</b><small>'+title()+'</small><button aria-label="'+text('关闭原理图','Close schematic')+'" id="close-schematic">'+icon('close')+'</button></div>'+circuitSvg(lesson,values,english);
+ const scrollTop=$('.schematic-body')?.scrollTop??0;
+ $('.schematic').innerHTML='<div class="schematic-head"><b>'+text('原理图','Schematic')+'</b><small>'+title()+'</small><button aria-label="'+text('关闭原理图','Close schematic')+'" id="close-schematic">'+icon('close')+'</button></div><div class="schematic-body" tabindex="0" role="region" aria-label="'+text('电路原理图，支持滚动和键盘翻页','Circuit diagram, scroll or use Page Up and Page Down')+'">'+circuitSvg(lesson,values,english)+'</div>';
  $('.schematic').insertAdjacentHTML('beforeend','<p class="schematic-hint">'+text('点击元件或引脚，查看 3D 与参数','Select a component or pin to inspect it in 3D')+'</p>');
  $('.schematic').querySelectorAll<SVGElement>('[data-circuit-part]').forEach(el=>{const activate=()=>openInspector(el.dataset.circuitPart!);el.onclick=e=>{e.stopPropagation();activate();};el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();activate();}};});syncSchematicSelection();
+ $('.schematic-body').scrollTop=scrollTop;
  $('#close-schematic').onclick=()=>setSetting('schematic',false);
 }
 function openInspector(id:string){
@@ -224,7 +226,7 @@ let mapHeld=false;function panMinimap(e:PointerEvent){const box=$('.minimap').ge
 window.addEventListener('hashchange',()=>setLesson(location.hash.slice(1),false));
 window.addEventListener('keydown',e=>{
  if(followDialog.open)return;
- if((e.target as HTMLElement).closest('input,select,textarea'))return;
+ if((e.target as HTMLElement).closest('input,select,textarea,.schematic-body'))return;
  if(e.key===' '&&(e.target as HTMLElement).closest('button'))return;
  if(lesson.id==='piano'&&/^[1-8]$/.test(e.key)){e.preventDefault();inputKey(Number(e.key)-1,true);return;}
  const key=e.key.toLowerCase();if(key===' '){e.preventDefault();if(status==='stopped')void run();else stop();}
