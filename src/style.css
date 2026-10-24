@@ -65,3 +65,7 @@
 .piano-keys button{flex:1;min-width:0;height:72px;padding:5px 0;border:1px solid #babfae;border-radius:0 0 5px 5px;background:#faf7ed;font-size:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:9px;user-select:none;touch-action:none}
 .piano-keys small{font-size:9px;color:#8d9487}.piano-keys button[aria-pressed=true]{background:#a1c6bc;transform:translateY(3px);border-color:#5c8f84}
 .device-preview{border:1px solid #cbd0bf;border-radius:7px;padding:10px;margin:10px 0;background:#eef0e5}.device-preview b{display:block;font-size:10px;color:#6c8075}.device-preview strong{display:block;font-size:18px;margin-top:8px;color:#527d73}.device-preview pre{white-space:pre-wrap;overflow-wrap:anywhere;font:10px/1.6 ui-monospace,monospace;margin:8px 0 0;max-height:130px;overflow:auto}
+
+/* Robot feedback keeps the stage visible while exposing measured state. */
+.readout.robot-readout{max-width:270px}.speed-chart{display:block;width:240px;max-width:100%;height:auto;margin-top:5px}.speed-chart text{font:8px ui-monospace,monospace}.stream-command{width:100%;margin-top:8px;touch-action:none;user-select:none}.stream-command[aria-pressed=true]{background:#537f78;color:#fff}.command-tip{display:block;color:#7c8273;font-size:10px;line-height:1.6;margin-top:5px}
+@media(max-width:800px){.readout.robot-readout{max-width:205px}.speed-chart{width:185px}}

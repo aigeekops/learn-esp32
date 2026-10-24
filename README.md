@@ -4,9 +4,9 @@
 
 # Learn ESP32 · ESP32 交互学习站
 
-通过 3D 电路、实时调参和 Arduino C++ 示例，在浏览器里学习 ESP32。包含 16 课，目标开发板为 **ESP32-DevKitC V4 / ESP32-WROOM-32E（38 针）**。
+通过 3D 电路、实时调参和 Arduino C++ 示例，在浏览器里学习 ESP32。包含 25 课，目标开发板为 **ESP32-DevKitC V4 / ESP32-WROOM-32E（38 针）**。
 
-[课程内容](docs/CURRICULUM.md) · [语法入门](tutorials/arduino-esp32-syntax/README.md) · [参与贡献](CONTRIBUTING.md) · [MIT 许可证](LICENSE)
+[课程内容](docs/CURRICULUM.md) · [机器人进阶](docs/ROBOTICS_COURSES.md) · [语法入门](tutorials/arduino-esp32-syntax/README.md) · [参与贡献](CONTRIBUTING.md) · [MIT 许可证](LICENSE)
 
 ![ESP32 交互学习站](docs/images/desktop-board.png)
 
@@ -16,9 +16,10 @@
 - 参数、示例代码、原理图、场景和串口反馈联动。
 - 四个课程页签、代码复制、模拟运行/停止、设置与本地学习进度。
 - 旋钮调光、光控夜灯、迷你钢琴、智能植物，以及 Wi-Fi / HTTP / 网页控制的课堂演示。
+- 机器人进阶：测距、电机驱动、编码器、PI 调速、差速运动、UART、BLE、ESP-NOW 与综合小车。
 - 中文课程；英文说明及 13 语种界面入口。其余 11 种语言的课程全文尚未翻译。
 
-**这是参数化教学模型**，不执行任意 C++，不连接电脑的 Wi-Fi 或真实 ESP32，也不模拟面包板孔位的导通。真实硬件需要另外编译、烧录和接线。它是独立的社区学习项目。
+**这是参数化教学模型**，不执行任意 C++，不连接电脑的 Wi-Fi、蓝牙、串口或真实 ESP32，也不模拟面包板孔位的导通。真实硬件需要另外编译、烧录和接线。它是独立的社区学习项目。
 
 ## 快速开始
 
@@ -40,7 +41,7 @@ npm run dev
 | `npm run preview` | 本地预览构建产物 |
 | `npm run build:standalone` | 构建并生成内嵌资源的 `output/learn-esp32.html` |
 | `npm run check:dist` | 核对根路径/子目录资源、许可证和单文件脚本语法 |
-| `npm run firmware:export` | 导出 16 课默认 `.ino` |
+| `npm run firmware:export` | 导出 25 课默认 `.ino`，另附 ESP-NOW 发送端（共 26 份） |
 | `npm run firmware:check` | 使用已安装的 Arduino CLI 编译默认示例 |
 
 `dist/`、`output/` 和依赖目录不提交 Git。静态构建会附带本项目与 Three.js 的完整许可声明；单文件 HTML 也保留这些声明。`file://` 模式尚未进行直接浏览器验收，推荐先通过 HTTP 预览。
@@ -66,6 +67,8 @@ npm run dev
 | 05–08 | 混合颜色、光控夜灯、温度报警、OLED |
 | 09–12 | 迷你钢琴、舵机、智能植物、非阻塞控制 |
 | 13–16 | Wi-Fi、网页读温度、网页控灯、联网植物监测 |
+| 17–20 | 超声波测距、电机驱动、编码器测速、PI 闭环调速 |
+| 21–25 | 双轮差速、UART、BLE、ESP-NOW、综合双轮机器人 |
 
 课程参数、引脚与四页签内容见 [课程定义](docs/CURRICULUM.md)。
 
@@ -98,7 +101,9 @@ npm run firmware:check
 npm run firmware:check -- /path/to/arduino-cli /path/to/config.yaml
 ```
 
-示例源文件输出到 `output/sketches/<课程 ID>/<课程 ID>.ino`；报告输出到 `output/compile/`。脚本使用系统临时目录构建，结束后清理中间文件。联网示例的 SSID、密码只在自己的本地副本填写，不提交凭据。
+示例源文件输出到 `output/sketches/<课程 ID>/<课程 ID>.ino`；第 24 课默认导出小车接收端，额外的遥控发送端位于 `output/sketches/espnow-sender/espnow-sender.ino`。两块 ESP32 需分别填写对端 STA MAC 并使用同一信道；BLE 使用内置 GATT 库。机器人接线和协议见 [机器人课程说明](docs/ROBOTICS_COURSES.md)。
+
+报告输出到 `output/compile/`。脚本使用系统临时目录构建，结束后清理中间文件。联网示例的 SSID、密码只在自己的本地副本填写，不提交凭据。
 
 2026-10-24 的 **16/16 默认固件编译记录**已保存在 [验证摘要](docs/validation/2026-10-24-firmware.json)。这是带日期的历史记录，不代表后续每次修改都已经编译，也不代表真机验证通过。详细边界见 [开发验收记录](docs/DEVELOPMENT_REPORT.md)。
 
@@ -109,6 +114,12 @@ src/
   lessons.ts       课程、参数和引脚定义
   lesson-guide.ts  逐课操作与代码讲解
   learning-parts.ts 光敏、钢琴与植物场景模型
+  robot-lessons.ts  机器人 9 课、参数和端点
+  robot-guide.ts    机器人逐课操作与双语讲解
+  robot-firmware.ts 机器人 Arduino 固件与双端 ESP-NOW
+  robot-simulation.ts 电机、编码器、闭环与通信教学模型
+  robot-parts.ts    机器人 3D 元件与场景反馈
+  robot-shared.ts   机器人状态契约
   circuit.ts       共用接线端点与 SVG 原理图
   firmware.ts      Arduino C++ 模板
   simulation.ts    教学行为模型
@@ -123,7 +134,7 @@ docs/             课程、架构、验收与部署说明
 
 ## 当前状态
 
-版本 **0.1.0**。中文 16 课和主要交互可用，尚未完成逐像素/逐动画对照、其余语言全文翻译和真实移动设备/真机验证。已知限制和检查范围记录在 [验收文档](docs/DEVELOPMENT_REPORT.md)，不将构建成功写成硬件或教学效果验证。
+版本 **0.1.0**。中文 25 课和主要交互可用，尚未完成逐像素/逐动画对照、其余语言全文翻译和真实移动设备/真机验证。已知限制和检查范围记录在 [验收文档](docs/DEVELOPMENT_REPORT.md)，不将构建成功写成硬件或教学效果验证。
 
 CI 只执行基本行为测试、构建、分发检查和示例导出，不自动下载完整 ESP32 工具链或重复烧录测试。
 

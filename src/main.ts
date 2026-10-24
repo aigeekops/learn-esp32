@@ -11,6 +11,7 @@ import {Workbench} from './scene.ts';
 import {icon,thumb} from './icons.ts';
 import {connections,circuitSvg} from './circuit.ts';
 import {componentDescription} from './component-info.ts';
+import {robotReadout,robotState} from './robot-ui.ts';
 
 const $=<T extends HTMLElement=HTMLElement>(selector:string)=>document.querySelector<T>(selector)!;
 const esc=(s:unknown)=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
@@ -49,12 +50,12 @@ let heldInput=false;const heldKeys=new Set<number>();
 function inputKey(index:number,held:boolean){if(held)heldKeys.add(index);else heldKeys.delete(index);if(status==='stopped'&&held)void run();model?.key(index,held);}
 function inputButton(held:boolean){heldInput=held;if(status==='stopped'&&held)void run();model?.input(held);}
 let audio:AudioContext|undefined,oscillator:OscillatorNode|undefined,gain:GainNode|undefined;
-const lessonArtwork:Record<string,string>={board:'board',blink:'led',button:'button',knob:'pot',pwm:'rgb',light:'light',temperature:'sensor',display:'oled',piano:'piano',servo:'servo',plant:'plant',timing:'clock',wifi:'router',http:'browser',web:'browser',project:'project'};
+const lessonArtwork:Record<string,string>={board:'board',blink:'led',button:'button',knob:'pot',pwm:'rgb',light:'light',temperature:'sensor',display:'oled',piano:'piano',servo:'servo',plant:'plant',timing:'clock',wifi:'router',http:'browser',web:'browser',project:'project',distance:'distance',motor:'motor',encoder:'encoder',speed:'speed',differential:'differential',uart:'uart',ble:'ble',espnow:'espnow',robot:'robot'};
 const navs=[['home',ui[2]],['chip',ui[4]],['play',ui[5]],['settings',ui[6]],['globe',ui[7]]];
 $('#app').innerHTML='<aside class="rail" aria-label="'+ui[2]+'"><button id="rail-toggle" aria-expanded="false" aria-label="'+text('展开侧边栏','Expand sidebar')+'">'+icon('right')+'</button>'+navs.map(([name,label])=>'<button data-nav="'+name+'" title="'+label+'" aria-label="'+label+'">'+icon(name,22)+'<span>'+label+'</span></button>').join('')+'<button id="wechat-follow" class="wechat-follow" aria-label="关注公众号极客行动" title="关注公众号 · 极客行动">'+icon('message',21)+'<span>极客行动</span></button><section class="rail-wechat" aria-label="微信公众号 极客行动"><p>微信公众号</p><h2>极客行动</h2><img src="'+wechatQr+'" width="258" height="258" alt="微信公众号极客行动关注二维码"></section><a class="rail-credit" href="https://github.com/aigeekops/learn-esp32" target="_blank" rel="noopener noreferrer" aria-label="GitHub · aigeekops/learn-esp32">GitHub<br>aigeekops/learn-esp32</a></aside>'+
 '<main class="main"><header class="masthead"><div class="brand-symbol">'+icon('chip',48)+'</div><div><h1>'+ui[0]+'</h1><p>'+ui[1]+'</p></div></header>'+
 '<section class="workbench" aria-label="3D ESP32"><div class="view-hint">'+text('拖动或 WASD 平移 · Q / E 旋转 · 滚轮缩放','Drag or WASD to pan · Q / E to rotate · Scroll to zoom')+'</div><div class="toolbar" role="toolbar" aria-label="3D">'+[['rotateLeft','向左转','Rotate left'],['rotateRight','向右转','Rotate right'],['minus','缩小','Zoom out'],['plus','放大','Zoom in'],['reset','重置视图','Reset view'],['flow','显示电流流动','Show current flow'],['schematic','显示原理图','Show schematic']].map(([name,zh,en])=>'<button class="tool" data-view="'+name+'" aria-label="'+text(zh,en)+'" title="'+text(zh,en)+'" '+(['flow','schematic'].includes(name)?'role="checkbox" aria-checked="'+settings[name as 'flow'|'schematic']+'"':'')+'>'+icon(name)+'</button>').join('')+'</div><div class="readout" hidden></div><div class="inspector" aria-label="'+text('元件检查器','Component inspector')+'" hidden></div><div class="schematic" hidden></div><div class="minimap" aria-label="'+text('小地图：点击移动视图','Minimap: click to pan')+'" hidden></div></section>'+
-'<div class="progress-block"><div class="progress-inner">'+icon('book',27)+'<div class="progress-copy">'+ui[16]+'<div class="progress-bottom"><div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="16"><div id="progress-fill"></div></div><span id="progress-count">0/16</span></div></div></div><div class="clock"></div></div>'+
+'<div class="progress-block"><div class="progress-inner">'+icon('book',27)+'<div class="progress-copy">'+ui[16]+'<div class="progress-bottom"><div class="track" role="progressbar" aria-valuemin="0" aria-valuemax="'+lessons.length+'"><div id="progress-fill"></div></div><span id="progress-count">0/'+lessons.length+'</span></div></div></div><div class="clock"></div></div>'+
 '<aside class="learning"><section class="panel info-panel" id="info-panel"><div class="tabs" role="tablist">'+['overview','pinout','example','specs'].map((id,i)=>'<button role="tab" id="tab-'+id+'" aria-controls="info-content" aria-selected="'+(i===0)+'" data-tab="'+id+'">'+ui[8+i]+'</button>').join('')+'</div><button class="info-expand" aria-expanded="false" aria-controls="info-panel" title="'+text('展开面板','Expand panel')+'" aria-label="'+text('展开面板','Expand panel')+'">'+icon('expand')+'</button><div class="info-body" role="tabpanel" id="info-content"></div></section>'+
 '<section class="panel code-panel" id="code-panel"><div class="code-head"><h2>'+ui[12]+'</h2><button class="small-btn" id="expand-code" aria-expanded="false" aria-controls="code-panel" aria-label="'+text('展开代码','Expand code')+'">'+icon('expand')+'</button><button class="small-btn" id="copy-code" aria-label="'+ui[17]+'">'+icon('copy')+'</button><button class="small-btn run" id="run" aria-label="'+ui[18]+'">'+icon('play')+'</button></div><div class="code-body" aria-label="Arduino C++"></div><section class="serial"><button class="serial-grip" role="separator" aria-orientation="horizontal" aria-label="'+text('调整串口监视器大小','Resize serial monitor')+'"></button><div class="serial-head"><i></i><span>'+ui[13]+'</span><span class="serial-status">'+ui[14]+'</span><button id="stop" aria-label="'+ui[19]+'">×</button></div><div class="serial-logs" role="log" aria-live="off"></div></section></section></aside>'+
 '<section class="courses"><h2>'+ui[3]+'</h2><div class="course-track" role="group" aria-label="'+ui[3]+'"></div><button class="course-arrow prev" aria-label="'+text('前面的课程','Previous lessons')+'">'+icon('left')+'</button><button class="course-arrow next" aria-label="'+text('更多课程','More lessons')+'">'+icon('right')+'</button></section></main><section class="flyout" hidden></section><div class="toast" role="status" hidden></div><dialog class="wechat-dialog" aria-labelledby="wechat-title"><button class="wechat-close" aria-label="关闭公众号二维码">'+icon('close')+'</button><p class="wechat-eyebrow">一起学 AI X 机器人</p><h2 id="wechat-title">关注「极客行动」</h2><p>微信扫码关注，一起学 AI X 机器人。</p><img src="'+wechatQr+'" width="258" height="258" alt="微信公众号极客行动关注二维码"><p class="wechat-tip">微信扫一扫 · 手机端可长按识别二维码</p></dialog>';
@@ -62,13 +63,13 @@ const followDialog=$<HTMLDialogElement>('.wechat-dialog');
 $('#wechat-follow').onclick=()=>followDialog.showModal();
 $('.wechat-close').onclick=()=>followDialog.close();
 followDialog.addEventListener('click',e=>{if(e.target===followDialog){const r=followDialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)followDialog.close();}});
-const stage=new Workbench($('.workbench'),{select:id=>openInspector(id),input:(key,v)=>updateParam(key,Math.round(v)),button:inputButton,key:inputKey});
+const stage=new Workbench($('.workbench'),{select:id=>openInspector(id),input:(key,v)=>updateParam(key,v),button:inputButton,key:inputKey});
 function toast(message:string){const el=$('.toast');el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,2500);}
 function title(l=lesson){return english?l.en:l.title;}
 function save(){saved[lesson.id]={...values};store('values',saved);}
 function updateParam(key:string,value:number|string){
  const p=lesson.params.find(p=>p.key===key);if(!p)return;
- const next=p.options?String(value):Math.max(p.min!,Math.min(p.max!,Math.round(Number(value)/(p.step??1))*(p.step??1)));
+ const next=p.options?String(value):Math.max(p.min!,Math.min(p.max!,Number((Math.round(Number(value)/(p.step??1))*(p.step??1)).toFixed(8))));
  if(p.options&&!p.options.some(o=>o[0]===next))return;values[key]=next;save();renderCode();if(settings.schematic)schematic();
  document.querySelectorAll<HTMLInputElement|HTMLSelectElement>('[data-param="'+key+'"]').forEach(el=>{if(el!==document.activeElement)el.value=String(next);});
  document.querySelectorAll<HTMLElement>('[data-swatch]').forEach(el=>el.setAttribute('aria-checked',String(el.dataset.swatch===String(values.color))));
@@ -79,7 +80,7 @@ function renderCards(){
  track.innerHTML=lessons.map((l,i)=>'<button class="course-card '+(l.id===lesson.id?'active':'')+'" data-lesson="'+l.id+'" aria-label="'+text('第 '+(i+1)+' 课：','Lesson '+(i+1)+': ')+title(l)+'">'+thumb(lessonArtwork[l.id])+'<span>'+(i+1)+'. '+title(l)+'</span>'+icon('right')+(done.has(l.id)?'<i class="done-mark">✓</i>':'')+'</button>').join('');
  document.querySelectorAll<HTMLButtonElement>('.course-card').forEach(b=>b.onclick=()=>setLesson(b.dataset.lesson!));
  track.scrollLeft=scroll;
- $('#progress-count').textContent=done.size+'/16';$('#progress-fill').style.width=done.size/16*100+'%';$('.track').setAttribute('aria-valuenow',String(done.size));
+ $('#progress-count').textContent=done.size+'/'+lessons.length;$('#progress-fill').style.width=done.size/lessons.length*100+'%';$('.track').setAttribute('aria-valuenow',String(done.size));
 }
 function renderInfo(){
  document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String((b as HTMLElement).dataset.tab===activeTab)));
@@ -95,7 +96,7 @@ function exampleSteps(){return english?lessonGuide[lesson.id].en:lessonGuide[les
 function renderCode(){
  activeLine=-1;
  const el=$('.code-body'),scroll=el.scrollTop;
- const code=template(lesson).replaceAll("\\'","'");
+ const code=template(lesson,values).replaceAll("\\'","'");
  const token=/\/\/[^\n]*|"(?:\\.|[^"\\])*"|\b(?:void|const|int|float|bool|static|unsigned|long|if|else|return|while|enum|switch|case|true|false|uint32_t|String)\b|\b\d+(?:\.\d+)?\b/g;
  function highlight(chunk:string){let out='',at=0;for(const m of chunk.matchAll(token)){out+=esc(chunk.slice(at,m.index));out+='<span class="'+(m[0].startsWith('//')?'comment':m[0].startsWith('"')?'str':/^\d/.test(m[0])?'num':'kw')+'">'+esc(m[0])+'</span>';at=m.index!+m[0].length;}return out+esc(chunk.slice(at));}
  el.innerHTML=code.split('\n').map((line,i)=>{
@@ -107,9 +108,10 @@ function renderCode(){
 function showExecution(s:Snapshot){
  document.querySelectorAll<SVGPathElement>('.schematic .switch-lever').forEach(el=>el.setAttribute('d',el.dataset[(el.dataset.pianoKey!==undefined?s.noteIndex===Number(el.dataset.pianoKey):s.pressed)?'closed':'open']!));
  document.querySelectorAll<SVGPathElement>('.schematic .led-emitter').forEach(el=>el.setAttribute('fill',s.led?String(values.color??'#df554b'):'none'));
- document.querySelectorAll<SVGTextElement>('.schematic [data-signal]').forEach(row=>{const pin=row.dataset.signal!;row.setAttribute('data-active',String(pin==='23'?s.led:pin==='27'?s.pressed:true));row.querySelector('[data-level]')!.textContent=pin==='23'?(lesson.id==='knob'?'PWM '+s.duty:s.led?'HIGH':'LOW'):pin==='27'?(s.pressed?'LOW':'HIGH'):pin==='34'?s.volts.toFixed(1)+'V':pin==='35'?s.mv+'mV':pin==='25'?s.frequency+'Hz':'';});
+ document.querySelectorAll<SVGTextElement>('.schematic [data-signal]').forEach(row=>{const pin=row.dataset.signal!;row.setAttribute('data-active',String(pin==='23'?s.led:pin==='27'?s.pressed:true));const level=row.querySelector('[data-level]');if(!level||s.robot)return;level.textContent=pin==='23'?(lesson.id==='knob'?'PWM '+s.duty:s.led?'HIGH':'LOW'):pin==='27'?(s.pressed?'LOW':'HIGH'):pin==='34'?s.volts.toFixed(1)+'V':pin==='35'?s.mv+'mV':pin==='25'?s.frequency+'Hz':'';});
  const patterns:Record<string,string>={board:'delay(1000)',blink:s.led?'delay(@@on@@)':'delay(@@off@@)',button:'digitalWrite(23, lit)',knob:'ledcWrite(23',pwm:'ledcWrite(23',light:'digitalWrite(23, night)',temperature:'digitalWrite(23, hot)',timing:'digitalWrite(23, pressed',display:'display.display()',piano:'ledcWriteTone',servo:'ledcWrite(18',plant:'drawPlant();',wifi:'WiFi.status() ==',http:'server.handleClient()',web:'server.handleClient()',project:'updateOutputs();'};
- const index=template(lesson).split('\n').findIndex(line=>line.includes(patterns[lesson.id]));
+ const pattern=patterns[lesson.id];
+ const index=pattern?template(lesson,values).split('\n').findIndex(line=>line.includes(pattern)):-1;
  if(index!==activeLine){const el=$('.code-body');el.querySelector('.active')?.classList.remove('active');const line=el.children[index] as HTMLElement|undefined;if(line){line.classList.add('active');if(line.offsetTop-el.offsetTop<el.scrollTop||line.offsetTop-el.offsetTop+line.offsetHeight>el.scrollTop+el.clientHeight)el.scrollTop=line.offsetTop-el.offsetTop-el.clientHeight/2;}activeLine=index;}
 }
 function syncSchematicSelection(){document.querySelectorAll<SVGElement>('[data-circuit-part]').forEach(el=>{const selected=el.dataset.circuitPart===inspected||(el.dataset.circuitPart==='power'&&/^pin-(GND|3V3|5V)/.test(inspected));el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));});}
@@ -120,13 +122,15 @@ function schematic(){
  $('#close-schematic').onclick=()=>setSetting('schematic',false);
 }
 function openInspector(id:string){
+ endCommandStream();
+ const controller=['computer','phone','peer'].includes(id);
  const entry=stage.entries.get(id);if(!entry)return;inspected=id;const relevant=lesson.params.filter(p=>id==='resistor'?p.key==='ohms':p.part===id&&p.key!=='ohms');stage.select(id);syncSchematicSelection();
  const el=$('.inspector');el.hidden=false;el.innerHTML='<h3>'+(entry?(english?entry.en:entry.label):id)+'</h3><button class="inspector-close" aria-label="'+text('关闭检查器','Close inspector')+'">'+icon('close')+'</button><p>'+esc(componentDescription(id,lesson,english))+'</p>'+relevant.map(paramHtml).join('')+
  (id==='button'||id==='watering'?'<button class="action-btn primary hold-btn" aria-pressed="false">'+(id==='watering'?text('按住浇水','Hold to water'):text('按住按钮','Hold button'))+'</button>':'')+
  (id==='piano'||id.startsWith('key-')?'<div class="piano-keys" role="group" aria-label="'+text('琴键','Piano keys')+'">'+noteNames.map((name,i)=>'<button data-piano-key="'+i+'" aria-label="'+name+' '+text('琴键','key')+'" aria-pressed="false">'+name+'<small>'+(i+1)+'</small></button>').join('')+'</div>':'')+
- (id==='browser'?'<div class="device-preview"><b>'+text('设备网页 · 教学模拟','Device webpage · teaching model')+'</b><strong data-device-reading>—</strong><pre data-device-response aria-live="polite"></pre></div>':'')+
- '<div class="inspector-actions"><button class="action-btn" data-action="focus">'+icon('focus',14)+text('放大查看','Focus')+'</button>'+(id==='browser'?'<button class="action-btn primary" data-action="send">'+icon('send',14)+text('发送请求','Send request')+'</button>':id==='reset'?'<button class="action-btn" data-action="reset">'+text('复位程序','Reset sketch')+'</button>':(lesson.parts.includes(id as never)||id==='resistor'||id.startsWith('rgb-resistor-'))?'<button class="action-btn" data-action="run">'+text(status==='running'?'停止程序':'运行后可见',status==='running'?'Stop':'Run sketch')+'</button>':'')+'</div>';
- $('.inspector-close').onclick=()=>{el.hidden=true;inspected='';syncSchematicSelection();stage.reset();};
+ (id==='browser'||controller?'<div class="device-preview"><b>'+(controller?text('通信控制台 · 教学模拟','Command console · teaching model'):text('设备网页 · 教学模拟','Device webpage · teaching model'))+'</b><strong data-device-reading>—</strong><pre data-device-response aria-live="polite"></pre></div>':'')+
+ '<div class="inspector-actions"><button class="action-btn" data-action="focus">'+icon('focus',14)+text('放大查看','Focus')+'</button>'+(id==='browser'||controller?'<button class="action-btn primary" data-action="send">'+icon('send',14)+(controller?text('发送一次','Send once'):text('发送请求','Send request'))+'</button>':id==='reset'?'<button class="action-btn" data-action="reset">'+text('复位程序','Reset sketch')+'</button>':(lesson.parts.includes(id as never)||id==='resistor'||id.startsWith('rgb-resistor-'))?'<button class="action-btn" data-action="run">'+text(status==='running'?'停止程序':'运行后可见',status==='running'?'Stop':'Run sketch')+'</button>':'')+'</div>'+(controller?'<button class="action-btn stream-command" aria-pressed="false">'+text('按住持续发送','Hold to keep sending')+'</button><small class="command-tip">'+text('每 250 ms 发送；松开 1 秒后指令过期停车。','Sends every 250 ms. Stops one second after release.')+'</small>':'');
+ $('.inspector-close').onclick=()=>{endCommandStream();el.hidden=true;inspected='';syncSchematicSelection();stage.reset();};
  el.querySelectorAll<HTMLButtonElement>('[data-swatch]').forEach((b,i,all)=>{b.onclick=()=>updateParam('color',b.dataset.swatch!);b.onkeydown=e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();const next=all[(i+(['ArrowLeft','ArrowUp'].includes(e.key)?all.length-1:1))%all.length];next.focus();updateParam('color',next.dataset.swatch!);}};});
  el.querySelectorAll<HTMLInputElement|HTMLSelectElement>('[data-param]').forEach(input=>input.oninput=()=>{const p=lesson.params.find(p=>p.key===input.dataset.param)!;updateParam(p.key,p.options?input.value:Number(input.value));});
  const hold=el.querySelector<HTMLButtonElement>('.hold-btn');if(hold){hold.onpointerdown=e=>{e.preventDefault();hold.setPointerCapture(e.pointerId);inputButton(true);hold.setAttribute('aria-pressed','true');};hold.onpointerup=hold.onpointercancel=()=>{inputButton(false);hold.setAttribute('aria-pressed','false');};hold.onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();inputButton(true);hold.setAttribute('aria-pressed','true');}};hold.onkeyup=e=>{if(e.key===' '||e.key==='Enter'){inputButton(false);hold.setAttribute('aria-pressed','false');}};}
@@ -142,7 +146,22 @@ function openInspector(id:string){
  el.querySelector<HTMLButtonElement>('[data-action="focus"]')!.onclick=()=>stage.focus(id);
  const action=el.querySelector<HTMLButtonElement>('[data-action="run"]');if(action)action.onclick=()=>{if(status==='running')stop();else void run();openInspector(id);};
  const reset=el.querySelector<HTMLButtonElement>('[data-action="reset"]');if(reset)reset.onclick=()=>{stop();void run();};
- const send=el.querySelector<HTMLButtonElement>('[data-action="send"]');if(send)send.onclick=async()=>{if(status!=='running')await run();model?.request();if(lesson.id==='project')updateParam('thirsty',values.thirsty);};
+ const send=el.querySelector<HTMLButtonElement>('[data-action="send"]');if(send)send.onclick=sendCommand;
+ const stream=el.querySelector<HTMLButtonElement>('.stream-command');if(stream){
+  stream.onpointerdown=e=>{e.preventDefault();stream.setPointerCapture(e.pointerId);void startCommandStream();};
+  stream.onpointerup=stream.onpointercancel=stream.onlostpointercapture=endCommandStream;
+  stream.onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();if(!e.repeat)void startCommandStream();}};
+  stream.onkeyup=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();endCommandStream();}};stream.onblur=endCommandStream;
+ }
+}
+let commandHeld=false,commandStream:ReturnType<typeof setInterval>|undefined;
+function endCommandStream(){commandHeld=false;clearInterval(commandStream);commandStream=undefined;document.querySelector('.stream-command')?.setAttribute('aria-pressed','false');}
+async function sendCommand(){const requestedLesson=lesson.id;if(status==='stopped')await run();if(status!=='running'||lesson.id!==requestedLesson)return;model?.request();if(lesson.id==='project')updateParam('thirsty',values.thirsty);}
+async function startCommandStream(){
+ if(commandHeld||status==='loading')return;
+ commandHeld=true;const requestedLesson=lesson.id;document.querySelector('.stream-command')?.setAttribute('aria-pressed','true');
+ if(status==='stopped')await run();if(!commandHeld||status!=='running'||lesson.id!==requestedLesson)return;
+ model?.request();commandStream=setInterval(()=>{if(commandHeld&&status==='running')model?.request();},250);
 }
 function paramHtml(p:Param){const v=values[p.key];if(p.key==='color')return '<div class="param"><div class="param-head"><span>'+text('颜色','Colour')+'</span></div><div class="color-swatches" role="radiogroup" aria-label="'+text('LED 颜色','LED colour')+'">'+p.options!.map(([c,zh,en])=>'<button role="radio" data-swatch="'+c+'" aria-label="'+text(zh,en)+'" aria-checked="'+(v===c)+'" style="--swatch:'+c+'"><i></i></button>').join('')+'</div></div>';return '<label class="param"><span class="param-head"><span>'+esc(english?p.en:p.label)+'</span><output data-output="'+p.key+'">'+esc(v)+(p.unit?' '+p.unit:'')+'</output></span>'+(p.options?'<select data-param="'+p.key+'" aria-label="'+esc(english?p.en:p.label)+'">'+p.options.map(([v1,zh,en])=>'<option value="'+esc(v1)+'" '+(String(v)===v1?'selected':'')+'>'+esc(english?en:zh)+'</option>').join('')+'</select>':'<input data-param="'+p.key+'" aria-label="'+esc(english?p.en:p.label)+'" type="range" min="'+p.min+'" max="'+p.max+'" step="'+(p.step??1)+'" value="'+esc(v)+'">')+'</label>';}
 function appendLog(s:string){const el=$('.serial-logs');const line=document.createElement('div');line.innerHTML='<span class="log-time">'+((model?.time??0)/1000).toFixed(2).padStart(5,'0')+'</span>'+esc(s);el.append(line);while(el.children.length>160)el.firstElementChild!.remove();el.scrollTop=el.scrollHeight;}
@@ -159,7 +178,7 @@ async function run(){
  model=new Simulation(lesson.id,values,appendLog);model.input(heldInput);for(const key of heldKeys)model.key(key,true);setStatus('running');appendLog(text('教学模拟运行中。','Teaching simulation running.'));
  if(!done.has(lesson.id)){done.add(lesson.id);store('done',[...done]);renderCards();}
 }
-function stop(){++runToken;heldInput=false;heldKeys.clear();gain?.gain.setTargetAtTime(0,audio!.currentTime,.015);if(status!=='stopped')appendLog(text('已停止。','Stopped.'));model=undefined;snapshot=undefined;setStatus('stopped');if(settings.schematic)schematic();$('.code-line.active')?.classList.remove('active');activeLine=-1;$('.readout').hidden=true;}
+function stop(){endCommandStream();++runToken;heldInput=false;heldKeys.clear();gain?.gain.setTargetAtTime(0,audio!.currentTime,.015);if(status!=='stopped')appendLog(text('已停止。','Stopped.'));model=undefined;snapshot=undefined;setStatus('stopped');if(settings.schematic)schematic();$('.code-line.active')?.classList.remove('active');activeLine=-1;$('.readout').hidden=true;}
 function setLesson(id:string,updateHash=true){const l=lessons.find(l=>l.id===id);if(!l)return;save();stop();lesson=l;values=normalize(l,saved[l.id]??{});activeTab='overview';setExpandedPanel();$('.code-body').scrollTop=0;$('.serial').style.removeProperty('--serial-height');$('.inspector').hidden=true;Object.assign(stage.settings,settings);stage.setLesson(l,values);inspected='';renderCards();const card=$('.course-card.active');$('.course-track').scrollLeft=Math.max(0,card.offsetLeft-($('.course-track').clientWidth-card.clientWidth)/2);renderInfo();renderCode();schematic();$('.schematic').hidden=!settings.schematic;stage.updateCamera();$('.serial-logs').replaceChildren();document.title=title()+' · '+ui[0];if(updateHash)history.replaceState(null,'','#'+l.id);menu='';$('.flyout').hidden=true;updateNav();}
 function setSetting(key:string,value:boolean){(settings as Record<string,boolean>)[key]=value;store('settings',settings);Object.assign(stage.settings,settings);if(key==='schematic'){$('.schematic').hidden=!value;schematic();stage.updateCamera();}document.querySelector('[data-view="'+key+'"]')?.setAttribute('aria-checked',String(value));}
 function openMenu(kind:string){
@@ -175,7 +194,7 @@ function openMenu(kind:string){
  const reset=el.querySelector<HTMLButtonElement>('.reset-progress');if(reset)reset.onclick=()=>{done.clear();store('done',[]);renderCards();toast(text('学习进度已重置','Progress reset'));};
  el.querySelectorAll<HTMLButtonElement>('[data-language]').forEach(b=>b.onclick=()=>{store('language',b.dataset.language);location.reload();});
 }
-function resetView(){$('.inspector').hidden=true;inspected='';syncSchematicSelection();stage.reset();}
+function resetView(){endCommandStream();$('.inspector').hidden=true;inspected='';syncSchematicSelection();stage.reset();}
 document.querySelectorAll<HTMLElement>('[data-nav]').forEach(b=>b.onclick=()=>{const kind=b.dataset.nav!;if(kind==='home'){resetView();$('.flyout').hidden=true;menu='';}else if(kind==='play'){if(status==='stopped')void run();else stop();}else openMenu(kind);});
 $('#rail-toggle').onclick=()=>{const expanded=$('.rail').classList.toggle('expanded');$('#rail-toggle').setAttribute('aria-expanded',String(expanded));$('#rail-toggle').setAttribute('aria-label',expanded?text('收起侧边栏','Collapse sidebar'):text('展开侧边栏','Expand sidebar'));};
 document.querySelectorAll<HTMLElement>('[data-tab]').forEach(b=>b.onclick=()=>{activeTab=b.dataset.tab!;renderInfo();});
@@ -212,11 +231,11 @@ window.addEventListener('keydown',e=>{
  if(key==='q')stage.turn(-1);if(key==='e')stage.turn(1);if(key==='r')resetView();if(key==='+'||key==='=')stage.magnify(1.15);if(key==='-')stage.magnify(1/1.15);
  if(key==='w')stage.panBy(0,3);if(key==='s')stage.panBy(0,-3);if(key==='a')stage.panBy(3,0);if(key==='d')stage.panBy(-3,0);
  if(key==='c')setSetting('schematic',!settings.schematic);if(key==='f')setSetting('flow',!settings.flow);
- if(key==='escape'){if(!$('.inspector').hidden){$('.inspector').hidden=true;inspected='';syncSchematicSelection();stage.reset();}else if(!$('.flyout').hidden){$('.flyout').hidden=true;menu='';}else if(document.querySelector('.expanded-panel'))setExpandedPanel();else resetView();}
+ if(key==='escape'){if(!$('.inspector').hidden){endCommandStream();$('.inspector').hidden=true;inspected='';syncSchematicSelection();stage.reset();}else if(!$('.flyout').hidden){$('.flyout').hidden=true;menu='';}else if(document.querySelector('.expanded-panel'))setExpandedPanel();else resetView();}
 });
 window.addEventListener('keyup',e=>{if(/^[1-8]$/.test(e.key))inputKey(Number(e.key)-1,false);});
-window.addEventListener('blur',()=>{for(const key of heldKeys)model?.key(key,false);heldKeys.clear();heldInput=false;model?.input(false);});
-document.addEventListener('visibilitychange',()=>{if(document.hidden)gain?.gain.setTargetAtTime(0,audio!.currentTime,.01);lastFrame=0;});
+window.addEventListener('blur',()=>{endCommandStream();for(const key of heldKeys)model?.key(key,false);heldKeys.clear();heldInput=false;model?.input(false);});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){endCommandStream();gain?.gain.setTargetAtTime(0,audio!.currentTime,.01);}lastFrame=0;});
 function frame(now:number){
  requestAnimationFrame(frame);
  const dt=lastFrame?Math.min(1000,now-lastFrame):0;lastFrame=now;
@@ -225,7 +244,8 @@ function frame(now:number){
  if(gain&&audio&&oscillator){oscillator.frequency.setTargetAtTime(snapshot?.frequency||1000,audio.currentTime,.02);gain.gain.setTargetAtTime(settings.sound&&snapshot?.frequency ? .035 : 0,audio.currentTime,.02);}
  const readout=$('.readout');readout.hidden=!snapshot;
  if(snapshot){const s=snapshot;showExecution(s);let textValue='';
-  if(lesson.id==='knob')textValue='<strong>ADC '+s.raw+' → PWM '+s.duty+'</strong>'+s.volts.toFixed(2)+' V · '+text('LED 亮度','LED brightness')+' '+Math.round(s.level*100)+'%';
+  if(s.robot)textValue=robotReadout(lesson.id,s.robot,english);
+  else if(lesson.id==='knob')textValue='<strong>ADC '+s.raw+' → PWM '+s.duty+'</strong>'+s.volts.toFixed(2)+' V · '+text('LED 亮度','LED brightness')+' '+Math.round(s.level*100)+'%';
   else if(lesson.id==='timing')textValue='<strong>ADC '+s.raw+'</strong>'+text('按钮','Button')+' '+(s.pressed?'LOW':'HIGH')+' · LED '+(s.led?'HIGH':'LOW');
   else if(lesson.id==='light')textValue='<strong>'+text('光线','Light')+' '+s.raw+' / 4095</strong>'+text(s.led?'夜灯亮起':'夜灯熄灭',s.led?'Night light on':'Night light off');
   else if(lesson.id==='plant'||lesson.id==='project')textValue='<strong>'+s.moisture+'% · '+(s.moisture<Number(values.thirsty)?'Water me!':s.moisture>Number(values.soggy)?'Too wet!':'Happy :)')+'</strong>RAW '+s.soilRaw+(lesson.id==='project'?' · '+s.network:'');
@@ -236,9 +256,10 @@ function frame(now:number){
   else if(lesson.id==='piano')textValue='<strong>'+s.note+' · '+s.frequency+' Hz</strong>'+text('按住琴键或键盘 1–8','Hold keys or keyboard 1–8');
   else if(lesson.id==='board')textValue='<strong>ESP32 ready</strong>setup() → loop()';
   else textValue='<strong>GPIO23 · '+(s.led?'HIGH':'LOW')+'</strong>'+text('教学模拟','Teaching simulation');
+  readout.classList.toggle('robot-readout',!!s.robot);
   if(readout.innerHTML!==textValue)readout.innerHTML=textValue;
   document.querySelectorAll<HTMLButtonElement>('.piano-keys [data-piano-key]').forEach(key=>key.setAttribute('aria-pressed',String(s.noteIndex===Number(key.dataset.pianoKey))));
-  const reading=document.querySelector<HTMLElement>('[data-device-reading]');if(reading)reading.textContent=lesson.id==='project'?s.moisture+'% · '+(s.moisture<Number(values.thirsty)?'Water me!':'Happy :)'):lesson.id==='http'?s.temperature.toFixed(1)+' °C':s.led?'LED ON':'LED OFF';
+  const reading=document.querySelector<HTMLElement>('[data-device-reading]');if(reading)reading.textContent=s.robot?robotState(s.robot.link,english)+' · '+robotState(s.robot.mode,english):lesson.id==='project'?s.moisture+'% · '+(s.moisture<Number(values.thirsty)?'Water me!':'Happy :)'):lesson.id==='http'?s.temperature.toFixed(1)+' °C':s.led?'LED ON':'LED OFF';
   const response=document.querySelector<HTMLElement>('[data-device-response]');if(response&&response.textContent!==model?.response)response.textContent=model?.response??'';
  }
  $('.minimap').hidden=!stage.focused&&Math.abs(stage.zoom-1)<.05&&stage.pan.length()<1;

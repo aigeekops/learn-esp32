@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-25",
+  "lessons": 25,
+  "exportedSketches": 26,
+  "behaviorTests": {
+    "passed": 19,
+    "failed": 0
+  },
+  "build": true,
+  "standaloneDistribution": true,
+  "firmware": {
+    "core": "3.3.12",
+    "fqbn": "esp32:esp32:esp32",
+    "compiled": [
+      {
+        "id": "ble",
+        "passed": true,
+        "sourceSha256": "73df6566d124dedb7b36f28857ba81ec31ff5cd291f3fca22318368f238cdafe",
+        "compileSummary": [
+          "Sketch uses 1108770 bytes (84%) of program storage space. Maximum is 1310720 bytes.",
+          "Global variables use 42124 bytes (12%) of dynamic memory, leaving 285556 bytes for local variables. Maximum is 327680 bytes."
+        ]
+      },
+      {
+        "id": "espnow",
+        "passed": true,
+        "sourceSha256": "a56edceed08ff6b5d6c154d84e6cf54596c192a97ed34b2e08d0d914ba9ae7ac",
+        "compileSummary": [
+          "Sketch uses 900071 bytes (68%) of program storage space. Maximum is 1310720 bytes.",
+          "Global variables use 46524 bytes (14%) of dynamic memory, leaving 281156 bytes for local variables. Maximum is 327680 bytes."
+        ]
+      },
+      {
+        "id": "espnow-sender",
+        "passed": true,
+        "sourceSha256": "327063c20284c231218926e16beb809ee5ae60cf1802fbce622cab2395922b2a",
+        "compileSummary": [
+          "Sketch uses 903172 bytes (68%) of program storage space. Maximum is 1310720 bytes.",
+          "Global variables use 45816 bytes (13%) of dynamic memory, leaving 281864 bytes for local variables. Maximum is 327680 bytes."
+        ]
+      },
+      {
+        "id": "robot",
+        "passed": true,
+        "sourceSha256": "cd00d28527fa446c00593829c89a3e02a81179cbedaa7aaa4b8675e2408a8c50",
+        "compileSummary": [
+          "Sketch uses 304759 bytes (23%) of program storage space. Maximum is 1310720 bytes.",
+          "Global variables use 22944 bytes (7%) of dynamic memory, leaving 304736 bytes for local variables. Maximum is 327680 bytes."
+        ]
+      }
+    ],
+    "scope": "4 representative new sketches; no claim that all 26 were compiled"
+  },
+  "hardwareTested": false,
+  "browserChecked": [
+    "ESP-NOW: valid command acknowledgement; channel mismatch; watchdog stop; held 250 ms send; sender/receiver code switch",
+    "PI speed: target 90 RPM; load80 saturates near80; load56 recovers near90; parameter inspector and live chart",
+    "Robot: scene parts and schematic connections rendered"
+  ]
+}

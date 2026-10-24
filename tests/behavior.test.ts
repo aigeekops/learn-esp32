@@ -8,8 +8,8 @@ import {Simulation,adc,relativeMoisture} from '../src/simulation.ts';
 const lesson=(id:string)=>lessons.find(l=>l.id===id)!;
 const sim=(id:string)=>new Simulation(id,defaults(lesson(id)),()=>{});
 const advance=(m:Simulation,ms:number)=>{let state=m.tick(0);while(ms>0){const step=Math.min(ms,10);state=m.tick(step);ms-=step;}return state;};
-test('16 lessons have complete sketches, bilingual guidance and valid GPIO routes',()=>{
- assert.equal(lessons.length,16);assert.equal(new Set(lessons.map(l=>l.id)).size,16);assert.equal(boardLeft.length+boardRight.length,38);
+test('25 lessons have complete sketches, bilingual guidance and valid GPIO routes',()=>{
+ assert.equal(lessons.length,25);assert.equal(new Set(lessons.map(l=>l.id)).size,25);assert.equal(boardLeft.length+boardRight.length,38);
  const pins=new Set([...boardLeft,...boardRight]);
  for(const l of lessons){assert.doesNotMatch(source(l,defaults(l)),/@@|undefined|NaN/);assert.match(source(l,defaults(l)),/void setup\(\)/);assert.equal(lessonGuide[l.id].featuresEn.length,3);assert.ok(lessonGuide[l.id].steps.length>=3);assert.ok(lessonGuide[l.id].en.length>=3);for(const c of connections(l))for(const endpoint of [c.from,c.to])if(endpoint.startsWith('board.'))assert.ok(pins.has(endpoint.slice(6)),endpoint);}
 });

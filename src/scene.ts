@@ -1,5 +1,7 @@
 import * as T from 'three';
 import {buildLearningPart} from './learning-parts.ts';
+import {buildRobotPart,robotPartNames,robotTerminals,resetRobotParts,setupRobotLinks,updateRobotParts} from './robot-parts.ts';
+import {isRobotLesson} from './robot-shared.ts';
 import { boardLeft,boardRight } from './lessons.ts';
 import type { Lesson, Part, Values } from './lessons.ts';
 import type { Snapshot } from './simulation.ts';
@@ -111,6 +113,7 @@ export class Workbench{
    this.text(g,'GND',ground[0]-breadboard.x,1.03,ground[2]-breadboard.z-2.6,9,2,'#58635c');
    if(this.lesson.parts.some(p=>['ldr','soil','oled','pot','sensor'].includes(p)))this.text(g,'3V3',power[0]-breadboard.x,1.03,power[2]-breadboard.z+2.6,9,2,'#b46e58');
   }
+  if(isRobotLesson(this.lesson.id)){for(const [label,row,col,color] of [['GND',26,0,'#58635c'],['3V3',27,9,'#b46e58'],['5V',24,9,'#aa8a51']] as const){const point=holePosition({row,col});this.text(g,label,point[0]-breadboard.x,1.03,point[2]-breadboard.z+(label==='5V'?-2.5:2.3),8,2,color);}}
   this.addEntry('breadboard',g,'面包板','Breadboard',2);return g;
  }
  private lead(g:T.Object3D,points:T.Vector3[],radius=.16){
@@ -143,9 +146,9 @@ export class Workbench{
   if(id==='led'||id==='rgb')return this.mountedLight(id);
   if(id==='pot'){const p=holePosition(mountedLeads['pot.signal']);x=p[0]+4;z=p[2];}
   const g=new T.Group();g.position.set(x,1.6,z);this.root.add(g);
-  const names:Record<Part,[string,string]>={led:['5 mm LED','5 mm LED'],button:['按钮','Button'],pot:['电位器','Potentiometer'],rgb:['RGB LED','RGB LED'],sensor:['TMP36 温度','TMP36'],oled:['OLED 屏幕','OLED'],buzzer:['蜂鸣器','Piezo'],servo:['舵机','Servo'],router:['路由器','Router'],browser:['设备网页','Device webpage'],ldr:['光敏分压模块','LDR divider'],lamp:['台灯','Desk lamp'],piano:['八键钢琴','Eight-key piano'],soil:['土壤传感器','Soil sensor'],plant:['智能植物','Smart plant'],watering:['洒水壶','Watering can']};
-  this.addEntry(id,g,...names[id],id==='plant'?32:id==='soil'?30:id==='lamp'?24:6);
-  if(buildLearningPart(this,id,g))return g;
+  const names:Record<string,[string,string]>={led:['5 mm LED','5 mm LED'],button:['按钮','Button'],pot:['电位器','Potentiometer'],rgb:['RGB LED','RGB LED'],sensor:['TMP36 温度','TMP36'],oled:['OLED 屏幕','OLED'],buzzer:['蜂鸣器','Piezo'],servo:['舵机','Servo'],router:['路由器','Router'],browser:['设备网页','Device webpage'],ldr:['光敏分压模块','LDR divider'],lamp:['台灯','Desk lamp'],piano:['八键钢琴','Eight-key piano'],soil:['土壤传感器','Soil sensor'],plant:['智能植物','Smart plant'],watering:['洒水壶','Watering can']};
+  this.addEntry(id,g,...(robotPartNames[id]??names[id]),id==='plant'?32:id==='soil'?30:id==='lamp'?24:6);
+  if(buildRobotPart(this,id,g)||buildLearningPart(this,id,g))return g;
   if(id==='button'){
    this.box(g,7,2.5,7,0,1.2,0,0x393e48);this.box(g,6.4,.35,6.4,0,2.6,0,0xa9adac);this.cylinder(g,2.3,1.6,0,3.6,0,0xb85545);
    for(const a of [-3.7,3.7])for(const b of [-2,2])this.box(g,1.7,.3,.7,a,0,b,0xb7b5a8,false);
@@ -191,24 +194,27 @@ export class Workbench{
   const boardEntries=[...this.entries].filter(([,entry])=>{let node:T.Object3D|null=entry.group;while(node){if(node===board)return true;node=node.parent;}return false;});
   const pins=new Map(this.pins),previousX=this.boardX,outgoing=new T.Group();
   for(const child of [...this.root.children])if(child!==board)outgoing.add(child);
-  this.scene.add(outgoing);this.root.clear();this.entries.clear();this.pins.clear();this.lights=[];this.flows=[];this.materials=[];this.oledTexture=null;this.browserTexture=null;this.selected='';this.lesson=l;this.values=values;this.boardX=l.parts.length?-28:0;
+  this.scene.add(outgoing);this.root.clear();this.entries.clear();this.pins.clear();this.lights=[];this.flows=[];this.materials=[];this.oledTexture=null;this.browserTexture=null;this.selected='';this.lesson=l;this.values=values;resetRobotParts(this);this.boardX=l.parts.length?-28:0;
   if(board){board.position.x=this.boardX;this.root.add(board);for(const [id,e] of boardEntries)this.entries.set(id,e);for(const [id,p] of pins)this.pins.set(id,p.clone().add(new T.Vector3(this.boardX-previousX,0,0)));}
   else this.board();
-  if(l.parts.some(p=>!['router','browser','plant','watering','lamp','soil','piano'].includes(p)))this.breadboard();
+  if(isRobotLesson(l.id)||l.parts.some(p=>!['router','browser','plant','watering','lamp','soil','piano'].includes(p)))this.breadboard();
   const positions:Record<string,[number,number]>={led:[14,-8],rgb:[14,-8],button:[27,7],pot:[25,16],sensor:[11,10],oled:[37,18],buzzer:[31,-13],servo:[25,0],router:[20,40],browser:[46,-35],ldr:[29,8],lamp:[60,-3],piano:[35,0],soil:[59,9],plant:[64,9],watering:[57,35]};
   if(l.parts.length===1&&!['router','browser'].includes(l.parts[0]))positions[l.parts[0]]=[24,0];
   if(l.id==='display'){positions.oled=[29,2];positions.sensor=[13,-14];}
   if(l.id==='pwm'){positions.rgb=[20,-10];}
   if(l.id==='piano')positions.buzzer=[32,20];
   if(l.id==='plant'||l.id==='project'){positions.oled=[28,16];positions.buzzer=[39,-15];positions.router=[4,43];}
-  for(const id of l.parts){const [x,z]=positions[id];this.part(id,x,z);}
-  if(l.parts.includes('servo')){
-   const supply=new T.Group();supply.position.set(43,1.5,-16);this.root.add(supply);
+  if(isRobotLesson(l.id))Object.assign(positions,{ranger:[72,-32],obstacle:[72,-67],driver:[68,-28],motor:[67,12],chassis:[84,18],computer:[-7,-53],phone:[-25,44],peer:[-25,44]});
+  if(l.id==='robot'){positions.ranger=[108,-38];positions.obstacle=[108,-73];}
+  for(const id of l.parts){const [x,z]=positions[id];const group=this.part(id,x,z);group.userData.origin=group.position.clone();}
+  if(l.parts.some(p=>['servo','driver','ranger'].includes(p))){
+   const supply=new T.Group();supply.position.set(isRobotLesson(l.id)?23:43,1.5,isRobotLesson(l.id)?47:-16);this.root.add(supply);
    this.box(supply,12,5,13,0,2,0,0x656f73);this.text(supply,'5 V DC\n+    −',0,4.6,0,11,10,'#f0ead4');this.addEntry('supply',supply,'独立 5 V 电源','Separate 5 V supply');
   }
   for(const net of physicalJumpers(l)){const part=(net.from.startsWith('board.')?net.to:net.from).split('.')[0],pin=net.to.endsWith('.groundBranch')?'GND':(net.from.startsWith('board.')?net.from:net.to).split('.')[1];this.wire(this.terminal(net.from),this.terminal(net.to),net.color,part,pin);}
+  setupRobotLinks(this);
   this.tags.innerHTML='<svg class="tag-leaders" aria-hidden="true"></svg>';this.labelNodes.clear();
-  const ids:string[]=l.parts.length?[...l.parts,...l.pins.filter(p=>p.target!=='board').slice(0,l.id==='piano'?2:99).map(p=>'pin-'+p.pin),...(l.parts.includes('led')?['resistor']:[]),...(l.parts.includes('servo')?['supply']:[])]:['usb','module','board','power','reset','boot'];
+  const ids:string[]=l.parts.length?[...l.parts,...l.pins.filter(p=>p.target!=='board').slice(0,isRobotLesson(l.id)?3:l.id==='piano'?2:99).map(p=>'pin-'+p.pin),...(l.parts.includes('led')?['resistor']:[]),...(l.parts.some(p=>['servo','driver','ranger'].includes(p))?['supply']:[])]:['usb','module','board','power','reset','boot'];
   for(const id of new Set(ids))this.addTag(id);
   this.circuitBounds=this.meshBounds(this.root);
   this.watermark.position.set(l.parts.length?5:0,-1.85,l.parts.length?49:35);
@@ -219,7 +225,7 @@ export class Workbench{
   this.host.setAttribute('aria-busy','true');this.animateAssembly(0);
  }
  private disposeGroup(group:T.Group){
-  group.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.LineSegments){o.geometry.dispose();for(const material of Array.isArray(o.material)?o.material:[o.material]){(material as T.MeshBasicMaterial).map?.dispose();material.dispose();}}});
+  group.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.Line){o.geometry.dispose();for(const material of Array.isArray(o.material)?o.material:[o.material]){(material as T.MeshBasicMaterial).map?.dispose();material.dispose();}}});
   group.removeFromParent();group.clear();
  }
  private finishAssembly(){
@@ -257,7 +263,7 @@ export class Workbench{
    buzzer:{signal:[2,-.7,0],GND:[-2,-.7,0]},servo:{signal:[-4,1,-6],VCC:[-4,1,-4],GND:[-4,1,-2]},
    supply:{positive:[-4,4.6,-4],negative:[4,4.6,-4]}
   };
-  const position=terminals[part]?.[pin],entry=this.entries.get(part);
+  const position=(robotTerminals[part]??terminals[part])?.[pin],entry=this.entries.get(part);
   if(!position||!entry)throw new Error('Unknown terminal '+endpoint);
   return entry.group.position.clone().add(new T.Vector3(...position));
  }
@@ -395,11 +401,13 @@ export class Workbench{
   if(part?.startsWith('key-')){this.onKey(Number(part.slice(4)),true);this.pointer.mode='key';}
   if(part==='pot')this.pointer.mode='pot';
   if(part==='servo')this.pointer.mode='servo';
+  if(part==='obstacle')this.pointer.mode='distance';
  }
  move(e:PointerEvent){
   const p=this.pointer;if(!p){const target=e.target as HTMLElement;if(target===this.renderer.domElement&&e.pointerType!=='touch'){const id=this.pick(e.clientX,e.clientY);this.setHover(id??'');this.host.style.cursor=id?'pointer':'grab';}else if(!target.closest('.scene-tag'))this.setHover('');return;}const dx=e.clientX-p.x,dy=e.clientY-p.y;if(Math.abs(dx)+Math.abs(dy)>2)p.moved=true;
   if(p.mode==='pot'){this.onInput('knob',Math.max(0,Math.min(100,Number(this.values.knob??50)+(dx-dy)*.5)));}
   else if(p.mode==='servo'){this.onInput('pulse',Math.max(1000,Math.min(2000,Number(this.values.pulse??1500)+(dx-dy)*5)));}
+  else if(p.mode==='distance'){this.onInput('distance',Math.max(2,Math.min(200,Number(this.values.distance??60)+(dx-dy)*.7)));}
   else if(p.mode==='rotate'){this.angle+=dx*.008;this.updateCamera();}
   else if(p.mode==='pan'){const amount=this.viewHeight/this.host.clientHeight;const right=new T.Vector3(Math.cos(this.angle),0,-Math.sin(this.angle));const up=new T.Vector3(-Math.sin(this.elevation)*Math.sin(this.angle),Math.cos(this.elevation),-Math.sin(this.elevation)*Math.cos(this.angle));this.pan.addScaledVector(right,-dx*amount).addScaledVector(up,dy*amount);this.updateCamera();}
   p.x=e.clientX;p.y=e.clientY;
@@ -435,6 +443,7 @@ export class Workbench{
   }
   if(this.browserTexture){const text=this.lesson.id==='project'?'ESP32 GARDEN\n'+(s?s.moisture+'%':'—%')+'  '+(s?.network??'STOPPED')+'\n'+(s&&s.moisture<Number(this.values.thirsty)?'Water me!':'Happy :)'):this.lesson.id==='http'?'ESP32 THERMOMETER\n'+(s?s.temperature.toFixed(1)+' C':'— C')+'\nGET /api/state':'ESP32 LED\n'+(s?.led?'ON':'OFF')+'\nPOST /api/led';if(text!==this.browserContent){this.browserContent=text;const {ctx,map}=this.browserTexture;ctx.fillStyle='#f0ecdf';ctx.fillRect(0,0,512,256);ctx.fillStyle='#467d7f';ctx.textAlign='left';ctx.font='bold 32px monospace';text.split('\n').forEach((line,i)=>ctx.fillText(line,18,50+i*65));map.needsUpdate=true;}}
 
+  updateRobotParts(this,s?.robot,time,this.values);
   for(const {curve,dots,part,pin,tube,count} of this.flows)dots.forEach((dot,i)=>{const active=!s?false:part==='led'?s.led:part==='button'?s.pressed:part==='buzzer'?s.frequency>0:part==='rgb'&&['23','19','18'].includes(pin)?s.rgb[['23','19','18'].indexOf(pin)]>0:true;dot.visible=active&&this.settings.flow&&tube.geometry.drawRange.count>=count;dot.position.copy(curve.getPoint((time/1800+i/3)%1));});
   this.animateHover(time);this.root.updateMatrixWorld(true);this.drawInteraction(english);
   const placed:{x:number;y:number;w:number;h:number}[]=[];

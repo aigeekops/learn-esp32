@@ -2,6 +2,19 @@ import {pianoPins,noteNames} from './lessons.ts';
 import type {Lesson} from './lessons.ts';
 // Board functions: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html
 export const descriptions:Record<string,[string,string]>={
+ ranger:['HC-SR04 用独立 5 V 供电。TRIG 发出触发脉冲，ECHO 脉宽给出超声波往返时间；距离 = 时间 × 声速 ÷ 2。ECHO 必须经过 2.2 kΩ / 3.3 kΩ 分压再进入 ESP32。','Power HC-SR04 from 5 V. TRIG starts a measurement; ECHO reports the sound round-trip time. Divide 5 V ECHO through 2.2 kΩ / 3.3 kΩ before the ESP32 input.'],
+ obstacle:['左右或上下拖动障碍物改变测距输入。超声波测量的是反射物距离；超时必须作为无效测量处理，不能当作 0 cm。','Drag the obstacle to change range. An echo timeout is an invalid measurement, not zero centimetres.'],
+ driver:['TB6612FNG 用 AIN1/AIN2、BIN1/BIN2 控制方向，PWM_A/PWM_B 控制占空比。逻辑 VCC 接 3.3 V，电机 VM 接独立 5 V，STBY 拉高运行；电机电流经过驱动器，不能经过 ESP32 GPIO。','TB6612FNG uses direction inputs plus PWM. Logic VCC is 3.3 V; motor VM uses a separate 5 V rail. STBY enables the bridge. Motor current goes through the driver, not ESP32 GPIO.'],
+ motor:['直流电机把电能变成旋转。PWM 影响驱动力，负载变化会改变实际转速；编码器提供旋转反馈。模型中的电机参数是教学示例，真实电机需要标定。','A DC motor converts power to rotation. PWM sets drive effort; load affects actual RPM. An encoder measures rotation. Model parameters are illustrative and need hardware calibration.'],
+ chassis:['左右轮速决定车体运动：同速前进、不同速转弯、反向转动原地旋转。台面显示局部运动轨迹，12 个场景单位代表 1 m；车身居中、轨迹随实际位移滚动。','Wheel speeds determine motion: equal speeds go straight, unequal speeds turn, opposite speeds pivot. The local trace uses 12 scene units per metre; the body stays centred as its path scrolls.'],
+ computer:['上位机通过 3.3 V USB-UART 适配器与 ESP32 通信：TX 接对方 RX、RX 接对方 TX，并共地。命令逐行解析、校验后执行；没有持续收到有效速度命令时停止电机。','The host connects through a 3.3 V USB-UART adapter: cross TX/RX and share GND. Parse and validate complete lines. Stop the motors when valid speed commands time out.'],
+ phone:['BLE 手机遥控器先连接 ESP32 的 GATT 服务，再写入控制特征值。回传特征值通知设备状态；断连或命令超时应让电机停止。这里的手机是教学模型。','A BLE controller connects to the ESP32 GATT service and writes command characteristics. Notifications return device status. Disconnects or command timeout stop the motors. This phone is a teaching model.'],
+ peer:['另一块 ESP32 通过 ESP-NOW 传递控制数据，双方必须使用相同 Wi-Fi 信道，并配置正确的对端 MAC。回执用于确认应用实际收到；链路失联后停止电机。','A second ESP32 sends ESP-NOW control packets. Both devices need the same Wi-Fi channel and the correct peer MAC. Application acknowledgements confirm reception. Link timeout stops the motors.'],
+ 'echo-resistor-upper':['2.2 kΩ 上臂电阻：ECHO → 2.2 kΩ → ESP32 输入取样点。与下臂 3.3 kΩ 电阻串联，将 5 V 高电平分压到约 3.0 V。','The 2.2 kΩ upper resistor connects ECHO to the sample point. Together with the 3.3 kΩ lower resistor, it reduces 5 V to about 3.0 V.'],
+ 'echo-resistor-lower':['3.3 kΩ 下臂电阻：ESP32 输入取样点 → 3.3 kΩ → GND。输出 = 5 × 3.3 / (2.2 + 3.3) ≈ 3.0 V，不能把 5 V ECHO 直接接 GPIO。','The 3.3 kΩ lower resistor connects the sample point to GND. Output is 5 × 3.3 / (2.2 + 3.3) ≈ 3.0 V. Never wire 5 V ECHO directly to GPIO.'],
+ 'encoder-disc':['编码器 A/B 两相信号相差四分之一个周期，先后顺序表示方向；单位时间脉冲数换算转速。本课使用 3.3 V 推挽输出编码器；若换成开集电极输出，GPIO34/35 没有内置上拉，必须外接 3.3 V 上拉。分清每转脉冲数、解码倍频和减速比。','Quadrature A/B signals differ by a quarter-cycle; order indicates direction. Pulses per time determine RPM. This lesson uses 3.3 V push-pull encoder outputs. Open-collector replacements need external 3.3 V pull-ups on GPIO34/35. Distinguish PPR, decoding multiplier and gear ratio.'],
+ 'encoder-left':['左轮编码器提供左轮实际转速反馈。A/B 相位判断旋转方向；与右轮分别计数，才能闭环控制差速底盘。','The left encoder measures actual left-wheel speed. Decode its A/B phases independently from the right wheel for closed-loop differential drive.'],
+ 'encoder-right':['右轮编码器提供右轮实际转速反馈。左右轮必须独立计数与调速，不能用相同 PWM 假定两轮速度相同。','The right encoder measures actual right-wheel speed. Count and regulate each wheel independently; equal PWM does not guarantee equal speed.'],
  ldr:['光敏电阻与固定 10 kΩ 电阻分压：3V3 → LDR → GPIO34 → 10 kΩ → GND。越亮，读数越高。','An LDR and 10 kΩ resistor divide 3.3 V into GPIO34. More light gives a higher reading.'],
  'light-resistor':['10 kΩ 下拉电阻连接 GPIO34 取样点与 GND，与光敏电阻一起分压，不能省略。','The 10 kΩ resistor connects the sample point to GND and completes the LDR voltage divider.'],
  lamp:['台灯代表环境光。调低亮度让光敏读数下降，低于阈值时 LED 夜灯亮起。','The lamp is an environment input. Dim it to lower the ADC reading and trigger the night light.'],
@@ -30,7 +43,7 @@ export const descriptions:Record<string,[string,string]>={
  buzzer:['低负载无源压电蜂鸣片，音高由 GPIO25 的信号频率决定。','A low-load passive piezo; GPIO25 frequency sets the pitch.'],
  servo:['信号接 GPIO18。独立 5 V 供电，与 ESP32 共地。','Signal on GPIO18. Separate 5 V servo supply, common GND.'],
  router:['课堂网络场景，不扫描或修改你的真实 Wi-Fi。','A classroom network model. It does not scan or change your actual Wi-Fi.'],
- supply:['只给舵机供电的独立稳压 5 V 电源，负端与 ESP32 GND 相连。','A separate regulated 5 V servo supply. Connect its negative terminal to ESP32 GND.'],
+ supply:['独立稳压 5 V 电源，按本课连接给舵机、电机驱动 VM 或测距模块供电，负端与 ESP32 GND 相连。电机供电需要满足堵转电流。','A separate regulated 5 V supply for the connected servo, motor VM or range sensor. Share ESP32 GND and size motor power for stall current.'],
  browser:['请求在本地设备模型中演示。真机网页由 ESP32 提供。','Requests run in the local device model. Real hardware serves its own webpage.']
 };
 

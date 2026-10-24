@@ -10,7 +10,7 @@ const buildRoot=await mkdtemp(join(tmpdir(),'learn-esp32-build-'));
 const results=[];
 await mkdir(report,{recursive:true});
 try{
-  for(const l of lessons){
+  for(const l of [...lessons,{id:'espnow-sender'}]){
     const args=['compile','--fqbn','esp32:esp32:esp32','--build-path',join(buildRoot,l.id)];
     if(config)args.push('--config-file',resolve(config));
     args.push(resolve('output/sketches',l.id));

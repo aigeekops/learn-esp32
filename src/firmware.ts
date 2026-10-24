@@ -1,4 +1,6 @@
 import type { Lesson, Values } from './lessons.ts';
+import {isRobotLesson} from './robot-shared.ts';
+import {robotTemplate} from './robot-firmware.ts';
 const wrap=(setup:string,loop:string,extra='')=>'#include <Arduino.h>\n'+extra+'\nvoid setup() {\n  Serial.begin(115200);\n'+setup+'\n}\n\nvoid loop() {\n'+loop+'\n}\n';
 const led='  pinMode(23, OUTPUT);';
 const sensor='float readTemperature() {\n  return (analogReadMilliVolts(35) - 500.0f) / 10.0f;\n}\n';
@@ -49,7 +51,8 @@ setInterval(refresh,1000);refresh();
 </script>)HTML";
 `;
 
-export function template(l:Lesson):string {
+export function template(l:Lesson,values?:Values):string {
+ if(isRobotLesson(l.id))return robotTemplate(l,values);
  switch(l.id){
   case 'board':return wrap('  Serial.println("ESP32 ready");','  static unsigned long count = 0;\n  Serial.printf("loop %lu\\n", count++);\n  delay(1000);');
   case 'blink':return wrap(led,'  digitalWrite(23, HIGH);\n  Serial.println("GPIO23=1");\n  delay(@@on@@);\n  digitalWrite(23, LOW);\n  Serial.println("GPIO23=0");\n  delay(@@off@@);','// GPIO23 -> @@ohms@@ ohm -> LED -> GND\n');
@@ -176,5 +179,5 @@ export function codeValue(key:string,values:Values):string{
  return String(values[key]);
 }
 export function source(l:Lesson,p:Values):string{
- return template(l).replace(/@@(\w+)@@/g,(_,key)=>codeValue(key,p)).replaceAll("\\'","'");
+ return template(l,p).replace(/@@(\w+)@@/g,(_,key)=>codeValue(key,p)).replaceAll("\\'","'");
 }

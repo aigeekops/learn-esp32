@@ -1,24 +1,29 @@
 import type {Values} from './lessons.ts';
 import {noteFrequencies,noteNames} from './lessons.ts';
+import {RobotSimulation} from './robot-simulation.ts';
+import {isRobotLesson,type RobotSnapshot} from './robot-shared.ts';
 export const adc=(volts:number)=>Math.round(Math.min(1,Math.max(0,volts/3.1))*4095);
 export const relativeMoisture=(raw:number,dry:number,wet:number)=>Math.max(0,Math.min(100,Math.trunc((raw-dry)*100/(wet-dry))));
 export interface Snapshot {
  led:boolean;level:number;duty:number;rgb:[number,number,number];pressed:boolean;raw:number;volts:number;temperature:number;mv:number;
  frequency:number;angle:number;network:string;ip:string;oled:string[];displayValue:number;time:number;
  moisture:number;soilRaw:number;soilWetness:number;watering:boolean;light:number;noteIndex:number;note:string;
+ robot?:RobotSnapshot;
 }
 export class Simulation {
  time=0;button=false;keys=new Set<number>();lastReport=-1;lastLed:boolean|undefined;lastButton=false;lastNote=-1;webLed=false;response='';
  sampledTemperature=25;sensorAt=0;displayTemperature=25;displayAt=0;displayMoisture=55;displayMessage='Happy :)';
  moisture:number;private moistureInput:number;
  id:string;values:Values;onLog:(text:string)=>void;
- constructor(id:string,values:Values,onLog:(text:string)=>void){this.id=id;this.values=values;this.onLog=onLog;this.moisture=this.moistureInput=Number(values.moisture??55);}
+ robot?:RobotSimulation;
+ constructor(id:string,values:Values,onLog:(text:string)=>void){this.id=id;this.values=values;this.onLog=onLog;this.moisture=this.moistureInput=Number(values.moisture??55);if(isRobotLesson(id))this.robot=new RobotSimulation(id,values,onLog);}
  input(pressed:boolean){this.button=pressed;}
  key(index:number,held:boolean){if(index<0||index>7)return;if(held)this.keys.add(index);else this.keys.delete(index);}
  network(){return !['wifi','http','web','project'].includes(this.id)?'':this.time<2200?'CONNECTING':this.values.network==='wrong'?'AUTH_FAILED':this.values.network==='offline'?'DISCONNECTED':'CONNECTED';}
  soil(){const raw=Math.round(3300-19*this.moisture);return {raw,percent:relativeMoisture(raw,Number(this.values.dry??3300),Number(this.values.wet??1400))};}
  state(){const soil=this.soil();return {moisturePercent:soil.percent,raw:soil.raw,thresholdPercent:Number(this.values.thirsty),needsWater:soil.percent<Number(this.values.thirsty),networkConnected:this.network()==='CONNECTED'};}
  request(){
+  if(this.robot){this.robot.request();this.response=this.robot.response;return;}
   const p=this.values;
   if(this.network()!=='CONNECTED'){this.response='NETWORK: device is not connected';this.onLog(this.response);return;}
   if(this.id==='web'){
@@ -52,6 +57,7 @@ export class Simulation {
   const noteIndex=this.keys.size?Math.max(...this.keys):-1,note=noteIndex<0?'—':noteNames[noteIndex];
   const rgb:[number,number,number]=[n('red',255),n('green',80),n('blue',20)];
   switch(this.id){
+   case 'distance':led=p.rangeMode==='timeout'||n('distance',70)<=n('stopDistance',20);break;
    case 'blink':led=t%(n('on',500)+n('off',500))<n('on',500);break;
    case 'button':led=this.button!==(p.inverted==='1');break;
    case 'knob':level=duty/255;led=duty>0;break;
@@ -89,6 +95,6 @@ export class Simulation {
   if(this.id==='piano'&&noteIndex!==this.lastNote){this.onLog(noteIndex<0?'Note off':note+' '+frequency+' Hz');this.lastNote=noteIndex;}
   return {led,level,duty,rgb,pressed:this.button,raw,volts,temperature,mv:500+temperature*10,frequency,angle:(n('pulse',1500)-1500)/1000*Math.PI,network,ip:network==='CONNECTED'?'192.168.4.23':'—',
    oled:isPlant?['ESP32 GARDEN',this.displayMoisture+'%',this.displayMessage]:['ESP32 THERMOMETER',this.displayTemperature.toFixed(1)+' C','LIVE SENSOR'],displayValue:isPlant?this.displayMoisture:this.displayTemperature/60*100,
-   moisture:soil.percent,soilRaw:soil.raw,soilWetness:this.moisture,watering:isPlant&&this.button,light,noteIndex,note,time:t};
+   moisture:soil.percent,soilRaw:soil.raw,soilWetness:this.moisture,watering:isPlant&&this.button,light,noteIndex,note,time:t,robot:this.robot?.tick(elapsed)};
  }
 }

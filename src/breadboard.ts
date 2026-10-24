@@ -1,5 +1,6 @@
 import type {Lesson} from './lessons.ts';
 import {connections} from './circuit.ts';
+import {isRobotLesson} from './robot-shared.ts';
 // One 2.54 mm grid owns both the visible sockets and the mounted leads.
 // a–e and f–j are separate five-contact strips on each numbered row.
 export interface Hole {row:number;col:number;}
@@ -25,6 +26,11 @@ export const jumperSockets:Record<string,Hole>={
  'pot.VCC':hole(20,0),'pot.signal':hole(21,0),'pot.GND':hole(22,0),
  ...Object.fromEntries(Array.from({length:5},(_,i)=>['breadboard.ground'+i,hole(26,i)])),
  ...Object.fromEntries(Array.from({length:5},(_,i)=>['breadboard.power'+i,hole(27,i+5)])),
+ ...Object.fromEntries(Array.from({length:4},(_,i)=>['breadboard.robotGround'+i,hole(26,i)])),
+ 'breadboard.robotGroundBridgeIn':hole(26,4),'breadboard.robotGroundBridgeOut':hole(25,0),
+ ...Object.fromEntries(Array.from({length:4},(_,i)=>['breadboard.robotGround'+(i+4),hole(25,i+1)])),
+ ...Object.fromEntries(Array.from({length:5},(_,i)=>['breadboard.robotLogic'+i,hole(27,i+5)])),
+ ...Object.fromEntries(Array.from({length:5},(_,i)=>['breadboard.robotPower'+i,hole(24,i+5)])),
 };
 export function connectedByStrip(a:string,b:string){
  return Boolean(mountedLeads[a]&&mountedLeads[b]&&strip(mountedLeads[a])===strip(mountedLeads[b]));
@@ -33,6 +39,20 @@ export function connectedByStrip(a:string,b:string){
 export function physicalJumpers(lesson:Lesson){
  const groundPart=lesson.parts.includes('rgb')?'rgb':lesson.parts.includes('led')?'led':null;
  const nets=connections(lesson).filter(c=>!connectedByStrip(c.from,c.to));
+ if(isRobotLesson(lesson.id)){
+  let ground=1,logic=1,power=1;
+  const result=nets.map(c=>{
+   if(c.to==='board.GND')return {...c,to:'breadboard.robotGround'+ground++};
+   if(c.from==='board.3V3')return {...c,from:'breadboard.robotLogic'+logic++};
+   if(c.from==='supply.positive')return {...c,from:'breadboard.robotPower'+power++};
+   return c;
+  });
+  if(ground>1)result.push({from:'board.GND',to:'breadboard.robotGround0',color:'#505359'});
+  if(ground>4)result.push({from:'breadboard.robotGroundBridgeIn',to:'breadboard.robotGroundBridgeOut',color:'#505359'});
+  if(logic>1)result.push({from:'board.3V3',to:'breadboard.robotLogic0',color:'#bb6958'});
+  if(power>1)result.push({from:'supply.positive',to:'breadboard.robotPower0',color:'#c58a4d'});
+  return result;
+ }
  if(lesson.parts.some(p=>['ldr','soil','piano'].includes(p))){
   let ground=1,power=1;const result=nets.map(c=>{
    if(c.to==='board.GND')return {...c,to:'breadboard.ground'+ground++};

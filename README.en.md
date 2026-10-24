@@ -4,9 +4,9 @@
 
 # Learn ESP32 · Interactive ESP32 Learning Site
 
-Learn ESP32 in the browser through 3D circuits, live parameter tuning, and Arduino C++ examples. Includes 16 lessons, targeting the **ESP32-DevKitC V4 / ESP32-WROOM-32E (38-pin)** board.
+Learn ESP32 in the browser through 3D circuits, live parameter tuning, and Arduino C++ examples. Includes 25 lessons, targeting the **ESP32-DevKitC V4 / ESP32-WROOM-32E (38-pin)** board.
 
-[Curriculum](docs/CURRICULUM.md) · [Programming Guide](tutorials/arduino-esp32-syntax/README.md) · [Contributing](CONTRIBUTING.md) · [MIT License](LICENSE)
+[Curriculum](docs/CURRICULUM.md) · [Robotics track](docs/ROBOTICS_COURSES.md) · [Programming Guide](tutorials/arduino-esp32-syntax/README.md) · [Contributing](CONTRIBUTING.md) · [MIT License](LICENSE)
 
 ![Learn ESP32 interactive site](docs/images/desktop-board.png)
 
@@ -16,9 +16,10 @@ Learn ESP32 in the browser through 3D circuits, live parameter tuning, and Ardui
 - Parameters, example code, schematics, scenarios, and serial feedback are linked together.
 - Four lesson tabs, code copy, simulated run/stop, settings, and local learning progress.
 - Classroom demos for knob dimming, a night light, a mini piano, a smart plant, Wi-Fi, HTTP, and web control.
+- Robotics lessons cover ranging, motor drivers, encoders, PI speed control, differential drive, UART, BLE, ESP-NOW, and a complete two-wheel robot.
 - Lessons are in Chinese; English instructions and a 13-language UI entry are provided. Full lesson text for the other 11 languages is not yet translated.
 
-**This is a parametric teaching model.** It does not execute arbitrary C++, does not connect to your computer's Wi-Fi or a real ESP32, and does not simulate breadboard hole conductivity. Real hardware requires separate compilation, flashing, and wiring. It is an independent community learning project.
+**This is a parametric teaching model.** It does not execute arbitrary C++, does not connect to your computer's Wi-Fi, Bluetooth, serial ports, or a real ESP32, and does not simulate breadboard hole conductivity. Real hardware requires separate compilation, flashing, and wiring. It is an independent community learning project.
 
 ## Quick Start
 
@@ -40,7 +41,7 @@ Open the Local address printed in the terminal. The browser needs WebGL support.
 | `npm run preview` | Preview the build locally |
 | `npm run build:standalone` | Build and emit a self-contained `output/learn-esp32.html` |
 | `npm run check:dist` | Verify root/subdirectory assets, licenses, and single-file script syntax |
-| `npm run firmware:export` | Export the 16 default `.ino` files |
+| `npm run firmware:export` | Export 25 default `.ino` files plus the ESP-NOW sender (26 sketches) |
 | `npm run firmware:check` | Compile the default examples with the installed Arduino CLI |
 
 `dist/`, `output/`, and dependencies are not committed to Git. The static build bundles the full license notices for this project and Three.js; the single-file HTML also keeps these notices. The `file://` mode has not been directly verified in a browser; preview over HTTP first.
@@ -66,6 +67,8 @@ Learning progress is stored in the visitor's browser and is not synced across de
 | 05–08 | RGB mixing, night light, temperature alarm, OLED |
 | 09–12 | Mini piano, servo, smart plant, non-blocking control |
 | 13–16 | Wi-Fi, web temperature, web LED control, connected plant monitor |
+| 17–20 | Ultrasonic ranging, motor drive, encoder feedback, PI speed control |
+| 21–25 | Differential drive, UART, BLE, ESP-NOW, complete two-wheel robot |
 
 See [lesson definitions](docs/CURRICULUM.md) for lesson parameters, pins, and the four-tab content.
 
@@ -98,7 +101,9 @@ Custom CLI path or config file:
 npm run firmware:check -- /path/to/arduino-cli /path/to/config.yaml
 ```
 
-Example source files are written to `output/sketches/<lesson ID>/<lesson ID>.ino`; reports are written to `output/compile/`. The script uses the system temp directory for builds and cleans up intermediate files afterward. For networked examples, fill in the SSID and password only in your own local copy; do not commit credentials.
+Example source files are written to `output/sketches/<lesson ID>/<lesson ID>.ino`. Lesson 24 exports the robot receiver by default; the additional controller sender is at `output/sketches/espnow-sender/espnow-sender.ino`. Configure the other board's STA MAC on both ESP32s and use the same channel. BLE uses the bundled GATT library. See the [robotics guide](docs/ROBOTICS_COURSES.md) for wiring and protocols.
+
+Reports are written to `output/compile/`. The script uses the system temp directory for builds and cleans up intermediate files afterward. For networked examples, fill in the SSID and password only in your own local copy; do not commit credentials.
 
 The **16/16 default firmware compile record** from **2026-10-24** is saved in the [validation summary](docs/validation/2026-10-24-firmware.json). This is a dated historical record; it does not mean every later change has been compiled, nor that real-device verification has passed. See [development acceptance record](docs/DEVELOPMENT_REPORT.md) for detailed boundaries.
 
@@ -107,6 +112,14 @@ The **16/16 default firmware compile record** from **2026-10-24** is saved in th
 ```text
 src/
   lessons.ts       lesson, parameter, and pin definitions
+  lesson-guide.ts  step-by-step bilingual lesson guidance
+  learning-parts.ts light, piano, and plant models
+  robot-lessons.ts robotics lessons, parameters, and terminals
+  robot-guide.ts   bilingual robotics guidance
+  robot-firmware.ts robotics sketches and both ESP-NOW roles
+  robot-simulation.ts motors, encoders, PI, and communication model
+  robot-parts.ts   robotics 3D parts and scene feedback
+  robot-shared.ts  robotics state contract
   circuit.ts       shared wiring endpoints and SVG schematics
   firmware.ts      Arduino C++ templates
   simulation.ts    teaching behavior model
@@ -121,7 +134,7 @@ docs/              lessons, architecture, acceptance, and deployment docs
 
 ## Current Status
 
-Version **0.1.0**. The 16 Chinese lessons and main interactions work. Pixel-by-pixel / animation-by-animation comparison, full lesson text translation for other languages, and real mobile-device / real-hardware verification are not yet done. Known limitations and the scope of checks are recorded in the [acceptance doc](docs/DEVELOPMENT_REPORT.md); a successful build is not presented as hardware or teaching-effectiveness verification.
+Version **0.1.0**. The 25 Chinese lessons and main interactions work. Pixel-by-pixel / animation-by-animation comparison, full lesson text translation for other languages, and real mobile-device / real-hardware verification are not yet done. Known limitations and the scope of checks are recorded in the [acceptance doc](docs/DEVELOPMENT_REPORT.md); a successful build is not presented as hardware or teaching-effectiveness verification.
 
 CI runs only basic behavior tests, build, distribution checks, and example exports; it does not auto-download the full ESP32 toolchain or repeat flashing tests.
 

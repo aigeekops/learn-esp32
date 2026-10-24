@@ -1,4 +1,13 @@
 const paths:Record<string,string>={
+ distance:'<path d="M3 5v14m18-14v14M3 12h18m-15-3-3 3 3 3m12-6 3 3-3 3"/>',
+ motor:'<rect x="5" y="6" width="14" height="12" rx="3"/><path d="M1 12h4m14 0h4M9 10v5l3-3 3 3v-5"/>',
+ encoder:'<circle cx="12" cy="12" r="8"/><path d="M12 4v4m0 8v4M4 12h4m8 0h4m-2-6-3 3m-6 6-3 3"/>',
+ speed:'<path d="M3 20V4m0 16h18M5 16l4-7 4 5 5-6 3 2M5 7h16"/>',
+ differential:'<rect x="7" y="6" width="10" height="12" rx="2"/><path d="M3 8v8m18-8v8M8 2l-4 3 4 3m8 14 4-3-4-3"/>',
+ uart:'<rect x="3" y="3" width="18" height="13" rx="2"/><path d="M1 21h22M6 9h12m-9-3-3 3 3 3m6-6 3 3-3 3"/>',
+ ble:'<path d="m7 7 10 10-5 5V2l5 5L7 17"/>',
+ espnow:'<rect x="1" y="8" width="6" height="10" rx="1"/><rect x="17" y="8" width="6" height="10" rx="1"/><path d="M8 9h8m-3-3 3 3-3 3M16 17H8m3-3-3 3 3 3"/>',
+ robot:'<rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 8V3m-3 0h6M2 11v6m20-6v6m-14-2h8"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/>',
 knob:'<circle cx="12" cy="12" r="8"/><path d="m12 12 4-5M4 21h16"/>',
 palette:'<circle cx="12" cy="12" r="9"/><circle cx="8" cy="8" r="1"/><circle cx="15" cy="7" r="1"/><circle cx="7" cy="14" r="1"/><path d="M20 15h-5l-2 5"/>',
 sun:'<circle cx="12" cy="12" r="4"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2"/>',
@@ -39,6 +48,7 @@ send:'<path d="m3 3 19 9-19 9 4-9zm4 9h15"/>'
 export function icon(name:string,size=20){return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[name]||paths.chip)+'</svg>';}
 export function thumb(kind:string){
  let body='';
+ const robot=robotThumb(kind);if(robot)return '<svg class="thumb" viewBox="0 0 96 70" aria-hidden="true">'+robot+'</svg>';
  if(['serial','clock','alarm'].includes(kind)){const symbols:Record<string,string>={serial:'&gt;_ 115200',clock:'millis()',alarm:'ALARM'};return '<svg class="thumb" viewBox="0 0 96 70" aria-hidden="true"><path d="m13 19 62-5 8 39-64 5z" fill="#3c505a" stroke="#303647" stroke-width="2"/><path d="m22 25 45-4 4 23-45 4z" fill="#20373d"/><text x="47" y="36" text-anchor="middle" fill="#b8d8cc" font-size="8" font-family="monospace">'+symbols[kind]+'</text><path d="m28 53 35-3" stroke="#b9a260" stroke-width="4" stroke-dasharray="2 3"/></svg>';}
  if(kind==='plant'||kind==='project'){
   const plant='<path d="m27 40 43-5-7 29-29 1z" fill="#bd8767" stroke="#303647" stroke-width="2"/><ellipse cx="48" cy="39" rx="22" ry="6" fill="#73553e" stroke="#303647"/><path d="M48 38V15" stroke="#537e59" stroke-width="3"/><path d="M48 27C20 28 21 6 21 6s27 0 27 21m0-7C48 0 75 2 75 2s-1 24-27 18" fill="#75a16b" stroke="#3d644f" stroke-width="2"/>';
@@ -56,4 +66,21 @@ export function thumb(kind:string){
  else if(kind==='buzzer')body='<path d="M30 22v24c0 12 36 12 36 0V22" fill="#303846" stroke="#303647" stroke-width="2"/><ellipse cx="48" cy="22" rx="18" ry="11" fill="#495361" stroke="#303647" stroke-width="2"/><ellipse cx="48" cy="22" rx="4" ry="3" fill="#202936"/><path d="M38 53v9m20-9v9" stroke="#959d97" stroke-width="2"/>';
  else body='<path d="M35 27h26v20H35z" fill="#303a44" stroke="#303647" stroke-width="2"/><path d="M36 27a12 10 0 0 1 24 0" fill="#35424c" stroke="#303647" stroke-width="2"/><path d="M39 46v17m9-17v17m9-17v17" stroke="#b0b6ae" stroke-width="2"/><text x="36" y="40" font-size="7" fill="#e8e7d9">TMP36</text>';
  return '<svg class="thumb" viewBox="0 0 96 70" aria-hidden="true">'+body+'</svg>';
+}
+
+function robotThumb(kind:string){
+ const outline='stroke="#303647" stroke-width="2" stroke-linejoin="round"';
+ const wheel=(x:number,y:number)=>`<ellipse cx="${x}" cy="${y}" rx="9" ry="15" fill="#34434a" ${outline}/><ellipse cx="${x}" cy="${y}" rx="4" ry="9" fill="#bba46b"/>`;
+ const board=(x:number)=>`<g transform="translate(${x} 0)"><path d="m3 21 25-4 8 35-25 4z" fill="#3f5e63" ${outline}/><path d="m8 25 16-2 3 12-16 2z" fill="#bfc4b8"/><path d="m11 43 17-2" stroke="#bba46b" stroke-width="3" stroke-dasharray="2 2"/></g>`;
+ const car=`${wheel(20,45)}${wheel(74,37)}<path d="m24 22 40-6 8 35-41 8z" fill="#779283" ${outline}/><path d="m34 28 21-3 3 13-21 3z" fill="#4c6870"/><path d="m48 21 2-11 7 8" fill="#d3b06d" ${outline}/>`;
+ if(kind==='distance')return `<path d="m8 29 63-4 10 23-63 5z" fill="#4f7885" ${outline}/><ellipse cx="30" cy="32" rx="13" ry="15" fill="#c4c6b9" ${outline}/><ellipse cx="59" cy="29" rx="13" ry="15" fill="#c4c6b9" ${outline}/><ellipse cx="30" cy="32" rx="9" ry="11" fill="#53616a"/><ellipse cx="59" cy="29" rx="9" ry="11" fill="#53616a"/><path d="M34 10h27m-23-3-4 3 4 3m19-6 4 3-4 3" fill="none" stroke="#649e96" stroke-width="2"/>`;
+ if(kind==='motor')return `<path d="m22 24 34-5 9 30-35 6z" fill="#c6a95b" ${outline}/><ellipse cx="23" cy="39" rx="9" ry="13" fill="#b9bfb6" ${outline}/>${wheel(69,40)}<path d="M8 39h15" stroke="#889795" stroke-width="4"/><path d="M66 10a22 22 0 0 1 20 17l-7-2m7 2 2-7" fill="none" stroke="#669a91" stroke-width="2"/>`;
+ if(kind==='encoder')return `<circle cx="43" cy="34" r="25" fill="#c1aa6b" ${outline}/>${Array.from({length:10},(_,i)=>`<path d="M43 14v8" stroke="#3d5057" stroke-width="5" transform="rotate(${i*36} 43 34)"/>`).join('')}<circle cx="43" cy="34" r="7" fill="#4d6970"/><path d="M64 15h8v7h8v-7h8m-24 16h4v7h8v-7h8" fill="none" stroke="#619c90" stroke-width="2"/><text x="72" y="56" font-size="11" fill="#435e65">A/B</text>`;
+ if(kind==='speed')return `<path d="M12 9v48h74" fill="none" ${outline}/><path d="M15 23h68" stroke="#be9d61" stroke-width="2" stroke-dasharray="4 3"/><path d="M15 52c15 0 12-42 29-35s12 10 20 7 13-2 19-1" fill="none" stroke="#609e90" stroke-width="3"/><text x="61" y="14" font-size="11" fill="#445e65">PI</text><text x="18" y="67" font-size="9" fill="#687b75">TARGET / RPM</text>`;
+ if(kind==='differential')return car+'<path d="M9 18V6l-4 5m4-5 4 5M84 53v12l-4-5m4 5 4-5" fill="none" stroke="#649e96" stroke-width="3"/>';
+ if(kind==='uart')return `<path d="m14 11 54-5 7 37-54 6z" fill="#b8bfb5" ${outline}/><path d="m21 17 39-4 4 24-39 4z" fill="#28434a"/><text x="27" y="30" font-size="10" fill="#bce0cb">TX RX</text><path d="m21 49 54-6 13 12-59 8z" fill="#d3d2c3" ${outline}/><path d="M1 31h12m-9-4-3 4 3 4m75-6h15m-4-4 4 4-4 4" fill="none" stroke="#619b8f" stroke-width="2"/>`;
+ if(kind==='ble')return `<rect x="24" y="4" width="42" height="61" rx="7" fill="#3b4e59" ${outline}/><rect x="28" y="10" width="34" height="47" rx="3" fill="#ece6d3"/><path d="m36 23 18 18-9 10V15l9 9-18 19" fill="none" stroke="#609b99" stroke-width="3"/><circle cx="45" cy="61" r="2" fill="#c4cbb8"/><path d="M73 21q12 12 0 24m5-30q18 18 0 36" fill="none" stroke="#aaa37f" stroke-width="2"/>`;
+ if(kind==='espnow')return board(2)+board(57)+'<path d="M36 22h21m-5-5 5 5-5 5M59 45H38m5-5-5 5 5 5" fill="none" stroke="#5d9c8e" stroke-width="3"/><text x="37" y="61" font-size="8" fill="#4d686b">NOW</text>';
+ if(kind==='robot')return car+'<path d="m32 20 31-4 2 12-31 4z" fill="#4c7e8a" stroke="#303647"/><circle cx="42" cy="22" r="6" fill="#bec7b8" stroke="#303647"/><circle cx="57" cy="20" r="6" fill="#bec7b8" stroke="#303647"/><path d="M71 10q10-6 20 0m-16 5q6-4 12 0" fill="none" stroke="#619c90" stroke-width="2"/>';
+ return '';
 }
