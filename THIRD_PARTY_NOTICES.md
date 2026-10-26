@@ -17,13 +17,25 @@
 
 开发依赖不随 Web 应用分发；若另行分发这些工具，应保留它们软件包内的 LICENSE、NOTICE 和第三方声明，而不能仅附本项目许可证。
 
+## 本地字体
+
+界面字体随应用本地打包，不请求第三方字体 CDN。字体文件位于 `public/fonts/`，许可证全文同目录保存，并会并入构建产物的第三方声明。
+
+| 字体 | 文件 | 许可 |
+| --- | --- | --- |
+| [Barlow](https://github.com/jpt/barlow) | `barlow-400/500/600.woff2` | SIL Open Font License 1.1 |
+| [Barlow Semi Condensed](https://github.com/jpt/barlow) | `barlow-semi-condensed-500/600/700.woff2` | SIL Open Font License 1.1 |
+| [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) | `jetbrains-mono.woff2` | SIL Open Font License 1.1 |
+
+字体取自 Google Fonts 的上游发行版，仅包含拉丁字符子集；中文回退到系统字体（PingFang SC、微软雅黑等）。
+
 ## 固件依赖
 
 课程 `.ino` 是本项目示例源代码。Arduino-ESP32 Core、Adafruit SSD1306、Adafruit GFX 与 Adafruit BusIO 是用户另行安装的工具链/库，不打包进 Web 应用；各自保留上游许可。本仓库不提供预编译固件二进制。另行发布链接了这些库的固件时，需要核对所用版本的上游许可与分发要求。
 
 ## 设计与教学参考
 
-- [Learn Arduino](https://learn-arduino-red.vercel.app/)（DilumSanjaya）提供界面与交互参照。本仓库未获得其应用、模型、素材的重用许可证，也未将其构建文件或素材并入应用。
+- [Learn Arduino](https://learn-arduino-red.vercel.app/)（DilumSanjaya）提供界面与交互参照。本仓库未获得其应用、模型、素材的重用许可证，也未将其构建文件或素材并入应用；界面字体另行取自 Google Fonts 上游 OFL 发行版。
 - ESP32 技术内容依据乐鑫及器件厂商资料，课程和图形独立编写。开源课程和资料的来源、各自许可及借鉴范围见 [来源记录](docs/REFERENCES.md)。
 
 项目并非 Arduino、Espressif、Adafruit 或参考站的官方产品。产品名称用于标识适配对象或来源，不表示隶属或背书。

@@ -12,6 +12,9 @@ import {icon,thumb} from './icons.ts';
 import {connections,circuitSvg} from './circuit.ts';
 import {componentDescription} from './component-info.ts';
 import {robotReadout,robotState} from './robot-ui.ts';
+import {installUIScale} from './ui-scale.ts';
+
+installUIScale();
 
 const $=<T extends HTMLElement=HTMLElement>(selector:string)=>document.querySelector<T>(selector)!;
 const esc=(s:unknown)=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
@@ -43,7 +46,7 @@ let done=new Set(load<string[]>('done',[]).filter(id=>lessons.some(l=>l.id===id)
 let saved=load<Record<string,Values>>('values',{});
 let settings={labels:true,flow:true,grid:true,autoRotate:false,sound:true,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,schematic:true,...load<Record<string,boolean>>('settings',{})};
 let lesson:Lesson=lessons.find(l=>l.id===location.hash.slice(1))??lessons[0];
-let values=normalize(lesson,saved[lesson.id]??{}),activeTab='overview',inspected='',menu='',status:'stopped'|'loading'|'running'='stopped',runToken=0;
+let values=normalize(lesson,saved[lesson.id]??{}),activeTab='overview',inspected='',hoveredPart='',menu='',status:'stopped'|'loading'|'running'='stopped',runToken=0;
 let model:Simulation|undefined,snapshot:Snapshot|undefined,lastFrame=0,toastTimer:ReturnType<typeof setTimeout>;
 let activeLine=-1;
 let heldInput=false;const heldKeys=new Set<number>();
@@ -63,7 +66,7 @@ const followDialog=$<HTMLDialogElement>('.wechat-dialog');
 $('#wechat-follow').onclick=()=>followDialog.showModal();
 $('.wechat-close').onclick=()=>followDialog.close();
 followDialog.addEventListener('click',e=>{if(e.target===followDialog){const r=followDialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)followDialog.close();}});
-const stage=new Workbench($('.workbench'),{select:id=>openInspector(id),input:(key,v)=>updateParam(key,v),button:inputButton,key:inputKey});
+const stage=new Workbench($('.workbench'),{select:id=>openInspector(id),hover:id=>{hoveredPart=id;syncSchematicSelection();},input:(key,v)=>updateParam(key,v),button:inputButton,key:inputKey});
 function toast(message:string){const el=$('.toast');el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,2500);}
 function title(l=lesson){return english?l.en:l.title;}
 function save(){saved[lesson.id]={...values};store('values',saved);}
@@ -96,7 +99,7 @@ function exampleSteps(){return english?lessonGuide[lesson.id].en:lessonGuide[les
 function renderCode(){
  activeLine=-1;
  const el=$('.code-body'),scroll=el.scrollTop;
- const code=template(lesson,values).replaceAll("\\'","'");
+ const code=template(lesson,values,english).replaceAll("\\'","'");
  const token=/\/\/[^\n]*|"(?:\\.|[^"\\])*"|\b(?:void|const|int|float|bool|static|unsigned|long|if|else|return|while|enum|switch|case|true|false|uint32_t|String)\b|\b\d+(?:\.\d+)?\b/g;
  function highlight(chunk:string){let out='',at=0;for(const m of chunk.matchAll(token)){out+=esc(chunk.slice(at,m.index));out+='<span class="'+(m[0].startsWith('//')?'comment':m[0].startsWith('"')?'str':/^\d/.test(m[0])?'num':'kw')+'">'+esc(m[0])+'</span>';at=m.index!+m[0].length;}return out+esc(chunk.slice(at));}
  el.innerHTML=code.split('\n').map((line,i)=>{
@@ -111,10 +114,26 @@ function showExecution(s:Snapshot){
  document.querySelectorAll<SVGTextElement>('.schematic [data-signal]').forEach(row=>{const pin=row.dataset.signal!;row.setAttribute('data-active',String(pin==='23'?s.led:pin==='27'?s.pressed:true));const level=row.querySelector('[data-level]');if(!level||s.robot)return;level.textContent=pin==='23'?(lesson.id==='knob'?'PWM '+s.duty:s.led?'HIGH':'LOW'):pin==='27'?(s.pressed?'LOW':'HIGH'):pin==='34'?s.volts.toFixed(1)+'V':pin==='35'?s.mv+'mV':pin==='25'?s.frequency+'Hz':'';});
  const patterns:Record<string,string>={board:'delay(1000)',blink:s.led?'delay(@@on@@)':'delay(@@off@@)',button:'digitalWrite(23, lit)',knob:'ledcWrite(23',pwm:'ledcWrite(23',light:'digitalWrite(23, night)',temperature:'digitalWrite(23, hot)',timing:'digitalWrite(23, pressed',display:'display.display()',piano:'ledcWriteTone',servo:'ledcWrite(18',plant:'drawPlant();',wifi:'WiFi.status() ==',http:'server.handleClient()',web:'server.handleClient()',project:'updateOutputs();'};
  const pattern=patterns[lesson.id];
- const index=pattern?template(lesson,values).split('\n').findIndex(line=>line.includes(pattern)):-1;
+ const index=pattern?template(lesson,values,english).split('\n').findIndex(line=>line.includes(pattern)):-1;
  if(index!==activeLine){const el=$('.code-body');el.querySelector('.active')?.classList.remove('active');const line=el.children[index] as HTMLElement|undefined;if(line){line.classList.add('active');if(line.offsetTop-el.offsetTop<el.scrollTop||line.offsetTop-el.offsetTop+line.offsetHeight>el.scrollTop+el.clientHeight)el.scrollTop=line.offsetTop-el.offsetTop-el.clientHeight/2;}activeLine=index;}
 }
-function syncSchematicSelection(){document.querySelectorAll<SVGElement>('[data-circuit-part]').forEach(el=>{const selected=el.dataset.circuitPart===inspected||(el.dataset.circuitPart==='power'&&/^pin-(GND|3V3|5V)/.test(inspected));el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));});}
+const boardLevel=new Set(['usb','module','regulator','reset','boot']);
+const circuitId=(id:string)=>boardLevel.has(id)?'board':id;
+function syncSchematicSelection(){
+ // Hover mirrors the click selection in the schematic so the two views always agree on the pointed part.
+ const hovered=hoveredPart?document.querySelector<SVGElement>('[data-circuit-part="'+circuitId(hoveredPart)+'"]'):null;
+ document.querySelectorAll<SVGElement>('[data-circuit-part]').forEach(el=>{
+  const id=el.dataset.circuitPart!;const selected=id===circuitId(inspected)||(id==='power'&&/^pin-(GND|3V3|5V)/.test(inspected));
+  el.classList.toggle('selected',selected);el.classList.toggle('pointed',!selected&&el===hovered);el.setAttribute('aria-pressed',String(selected));
+ });
+ if(hovered&&!$('.schematic').hidden)revealSchematicPart(hovered);
+}
+function revealSchematicPart(el:SVGElement){
+ const body=$('.schematic-body');if(!body)return;
+ const r=el.getBoundingClientRect(),b=body.getBoundingClientRect();
+ if(r.top<b.top+6)body.scrollTop-=b.top-r.top+10;
+ else if(r.bottom>b.bottom-6)body.scrollTop+=r.bottom-b.bottom+10;
+}
 function schematic(){
  const scrollTop=$('.schematic-body')?.scrollTop??0;
  $('.schematic').innerHTML='<div class="schematic-head"><b>'+text('原理图','Schematic')+'</b><small>'+title()+'</small><button aria-label="'+text('关闭原理图','Close schematic')+'" id="close-schematic">'+icon('close')+'</button></div><div class="schematic-body" tabindex="0" role="region" aria-label="'+text('电路原理图，支持滚动和键盘翻页','Circuit diagram, scroll or use Page Up and Page Down')+'">'+circuitSvg(lesson,values,english)+'</div>';
@@ -125,6 +144,7 @@ function schematic(){
 }
 function openInspector(id:string){
  endCommandStream();
+ if(!id){const el=$('.inspector');if(!el.hidden){el.hidden=true;inspected='';syncSchematicSelection();}return;}
  const controller=['computer','phone','peer'].includes(id);
  const entry=stage.entries.get(id);if(!entry)return;inspected=id;const relevant=lesson.params.filter(p=>id==='resistor'?p.key==='ohms':p.part===id&&p.key!=='ohms');stage.select(id);syncSchematicSelection();
  const el=$('.inspector');el.hidden=false;el.innerHTML='<h3>'+(entry?(english?entry.en:entry.label):id)+'</h3><button class="inspector-close" aria-label="'+text('关闭检查器','Close inspector')+'">'+icon('close')+'</button><p>'+esc(componentDescription(id,lesson,english))+'</p>'+relevant.map(paramHtml).join('')+
@@ -205,7 +225,7 @@ $('.course-arrow.next').onclick=()=>$('.course-track').scrollBy({left:440,behavi
 $('.course-arrow.prev').onclick=()=>$('.course-track').scrollBy({left:-440,behavior:'smooth'});
 $('#run').onclick=()=>{if(status==='stopped')void run();else stop();};
 $('#stop').onclick=stop;
-$('#copy-code').onclick=async()=>{try{await navigator.clipboard.writeText(source(lesson,values));toast(text('代码已复制','Code copied'));}catch{toast(text('复制失败，请选择代码手动复制','Copy failed. Select the code to copy.'));}};
+$('#copy-code').onclick=async()=>{try{await navigator.clipboard.writeText(source(lesson,values,english));toast(text('代码已复制','Code copied'));}catch{toast(text('复制失败，请选择代码手动复制','Copy failed. Select the code to copy.'));}};
 function setExpandedPanel(target?:'info'|'code'){
  for(const kind of ['info','code'] as const){
   const panel=$('.'+kind+'-panel'),button=$(kind==='info'?'.info-expand':'#expand-code'),expanded=target===kind;

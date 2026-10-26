@@ -21,3 +21,6 @@ public/THIRD_PARTY_NOTICES.txt
 
 # One-time transfer artifact, not project source
 TRANSFER_MANIFEST.sha256
+
+# Local agent workspace
+.workbuddy/

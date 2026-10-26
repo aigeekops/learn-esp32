@@ -1,8 +1,8 @@
 import type {Lesson,Values} from './lessons.ts';
 
 const rangeCode=String.raw`
-// HC-SR04: 5 V VCC; ECHO -> 2.2k -> GPIO14 -> 3.3k -> GND (~3.0 V).
-const int TRIG = 13, ECHO = 14;
+//~超声波 5 V，ECHO 分压到约 3 V~HC-SR04 5 V, ECHO divided to ~3 V
+const int TRIG = 13, ECHO = 14;  //~触发/回响脚~trig / echo
 const float STOP_CM = @@stopDistance@@;
 portMUX_TYPE echoMux = portMUX_INITIALIZER_UNLOCKED;
 volatile uint32_t echoRiseUs = 0, echoWidthUs = 0;
@@ -29,7 +29,7 @@ void updateRange() {
   portEXIT_CRITICAL(&echoMux);
   if (rangeWaiting && ready) {
     rangeWaiting = false; rangeValid = width >= 100 && width <= 25000;
-    if (rangeValid) distanceCm = width * 0.0343f / 2.0f;
+    if (rangeValid) distanceCm = width * 0.0343f / 2.0f;  //~声速换算成厘米~speed of sound to cm
   }
   if (rangeWaiting && uint32_t(micros() - triggerAt) >= 25000) {
     rangeWaiting = false; rangeValid = false;
@@ -45,42 +45,42 @@ void updateRange() {
 
 function motorCode(dual:boolean,feedback:boolean,controlled:boolean,mode:string):string {
  return String.raw`
-// TB6612: logic VCC=3.3 V; VM=separate motor supply; all grounds common.
-// Calibrate encoder polarity so forward wheel motion gives positive counts.
-const int PWM_L = 25, IN_L1 = 18, IN_L2 = 19, STBY = 4;
+//~TB6612：3.3 V 逻辑，VM 单独供电~TB6612: 3.3 V logic, VM separate
+//~前进时计数应为正~forward motion counts up
+const int PWM_L = 25, IN_L1 = 18, IN_L2 = 19, STBY = 4;  //~左轮 PWM/方向/使能~left: PWM, dir, standby
 ${dual?'const int PWM_R = 26, IN_R1 = 23, IN_R2 = 27;':''}
 const float MAX_RPM = 180.0f, COMMAND_LIMIT = 150.0f;
 float targetL = 0, targetR = 0, rpmL = 0, rpmR = 0;
 int dutyL = 0, dutyR = 0;
 ${feedback?String.raw`
-// Counts per output-wheel revolution in A-rising-edge counting mode.
+//~每转计数（A 相上升沿）~counts per turn, A rising edge
 const float CPR = @@cpr@@;
 portMUX_TYPE encoderMux = portMUX_INITIALIZER_UNLOCKED;
 volatile int32_t countL = 0, countR = 0;
 int32_t previousL = 0, previousR = 0;
 void ARDUINO_ISR_ATTR encoderLeft() {
-  portENTER_CRITICAL_ISR(&encoderMux); countL += digitalRead(33) ? -1 : 1; portEXIT_CRITICAL_ISR(&encoderMux);
+  portENTER_CRITICAL_ISR(&encoderMux); countL += digitalRead(33) ? -1 : 1; portEXIT_CRITICAL_ISR(&encoderMux);  //~B 相定方向~phase B sets direction
 }
 ${dual?String.raw`void ARDUINO_ISR_ATTR encoderRight() {
   portENTER_CRITICAL_ISR(&encoderMux); countR += digitalRead(35) ? -1 : 1; portEXIT_CRITICAL_ISR(&encoderMux);
 }`:''}
 `:''}
 ${controlled?String.raw`
-const float KP = @@kp@@, KI = @@ki@@;
+const float KP = @@kp@@, KI = @@ki@@;  //~PI 参数，先小后大~PI gains, start small
 float integralL = 0, integralR = 0;
 int piDuty(float target, float measured, float &integral, float dt) {
   if (target == 0) { integral = 0; return 0; }
   float error = target - measured;
   float nextIntegral = constrain(integral + KI * error * dt, -255.0f, 255.0f);
   float candidate = KP * error + nextIntegral;
-  // Integrate only when not saturating farther in the direction of the error.
+  //~饱和时暂停积分~skip integrating while saturating
   if ((candidate <= 255 || error < 0) && (candidate >= -255 || error > 0)) integral = nextIntegral;
   return int(lroundf(constrain(KP * error + integral, -255.0f, 255.0f)));
 }`:''}
 void driveWheel(int pwm, int in1, int in2, int duty) {
   duty = constrain(duty, -255, 255);
   digitalWrite(in1, duty > 0); digitalWrite(in2, duty < 0);
-  ledcWrite(pwm, abs(duty)); // zero + both direction pins LOW = coast
+  ledcWrite(pwm, abs(duty));  //~方向由 IN1/IN2 决定~direction comes from IN1/IN2
 }
 void writeDrive() {
   driveWheel(PWM_L, IN_L1, IN_L2, dutyL);
@@ -93,14 +93,14 @@ void setupDrive() {
   writeDrive(); digitalWrite(STBY, HIGH);
   ${feedback?String.raw`pinMode(32, INPUT_PULLUP); pinMode(33, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(32), encoderLeft, RISING);
-  ${dual?String.raw`// GPIO34/35 have no internal pull-ups: add external pulls if the encoder needs them.
+  ${dual?String.raw`//~GPIO34/35 无内部上拉~GPIO34/35 have no pull-ups
   pinMode(34, INPUT); pinMode(35, INPUT);
   attachInterrupt(digitalPinToInterrupt(34), encoderRight, RISING);`:''}`:''}
 }
 void updateDrive() {
   static uint32_t sampledAt = 0;
   uint32_t now = millis(), elapsed = now - sampledAt;
-  if (elapsed < 100) return;
+  if (elapsed < 100) return;  //~每 100 ms 更新~update every 100 ms
   sampledAt = now; float dt = elapsed / 1000.0f;
   ${feedback?String.raw`int32_t left, right;
   portENTER_CRITICAL(&encoderMux); left = countL; right = countR; portEXIT_CRITICAL(&encoderMux);
@@ -185,7 +185,7 @@ const espnowPacket=String.raw`
 #include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
-// Fill in the OTHER board's STA MAC, printed by its setup().
+//~填另一块板的 STA MAC，开机时会打印~put the other board's STA MAC here
 const uint8_t PEER_MAC[6] = {0, 0, 0, 0, 0, 0};
 const uint8_t RADIO_CHANNEL = @@channel@@;
 struct __attribute__((packed)) RadioPacket {
@@ -323,7 +323,7 @@ class RobotServerCallbacks : public BLEServerCallbacks {
 class RobotWriteCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *characteristic) override {
     String line = characteristic->getValue();
-    // Optional CR/LF is framing, not part of the command.
+    //~CR/LF 只是分帧，不属于命令~CR/LF is framing, not the command
     while (line.endsWith("\n") || line.endsWith("\r")) line.remove(line.length() - 1);
     if (line.length() <= 63) receiveCommand(line);
   }
@@ -347,7 +347,7 @@ void updateBLE() {
   }
   if (phoneConnected && millis() - notifiedAt >= 200) {
     notifiedAt = millis();
-    // Four signed integer RPMs fit the default 20-byte notification payload.
+    //~四个带符号转速值能放进 20 字节通知~four signed RPMs fit a 20-byte notify
     char payload[32]; snprintf(payload, sizeof(payload), "%d,%d,%d,%d",
       int(lroundf(targetL)), int(lroundf(targetR)), int(lroundf(rpmL)), int(lroundf(rpmR)));
     statusCharacteristic->setValue(reinterpret_cast<const uint8_t*>(payload), strlen(payload));
@@ -391,7 +391,7 @@ float x = 0, y = 0, heading = 0;
 void updateOdometry() {
   static uint32_t updatedAt = 0;
   uint32_t now = millis(), elapsed = now - updatedAt;
-  if (elapsed < 100) return;
+  if (elapsed < 100) return;  //~每 100 ms 更新~update every 100 ms
   updatedAt = now; float dt = elapsed / 1000.0f;
   float vl = rpmL * 2 * PI * WHEEL_RADIUS / 60, vr = rpmR * 2 * PI * WHEEL_RADIUS / 60;
   float velocity = (vl + vr) / 2, omega = (vr - vl) / TRACK_WIDTH;

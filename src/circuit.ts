@@ -45,7 +45,7 @@ const names:Record<string,[string,string]>={led:['LED','LED'],button:['按钮','
 export function circuitSvg(l:Lesson,v:Values,english:boolean):string{
  const robot=isRobotLesson(l.id),rows=l.pins.filter(p=>p.target!=='board'),outputs=l.parts.includes('chassis')?2:l.parts.includes('motor')?1:0,h=Math.max(164,rows.length*58+96+(robot?outputs*47+74:0));
  const line=(d:string,color='#505359',className='')=>'<path class="'+className+'" d="'+d+'" fill="none" stroke="'+color+'" stroke-width="1.6"/>';
- const label=(x:number,y:number,t:string,size=12)=>'<text x="'+x+'" y="'+y+'" font-family="monospace" font-size="'+size+'" fill="#394655">'+t+'</text>';
+ const label=(x:number,y:number,t:string,size=12)=>'<text x="'+x+'" y="'+y+'" font-family="monospace" font-size="'+size+'" fill="#18213d">'+t+'</text>';
  const ground=(x:number,y:number)=>line('M'+x+' '+y+'v5m-7 0h14m-11 3h8m-6 3h4');
  const hit=(id:string,name:string,x:number,y:number,w:number,height:number,body:string)=>'<g class="schematic-hit" data-circuit-part="'+id+'" role="button" tabindex="0" aria-label="'+name+'" aria-pressed="false"><rect class="hit-area" x="'+x+'" y="'+y+'" width="'+w+'" height="'+height+'" rx="5" fill="transparent"/>'+body+'</g>';
  let body=hit('board','ESP32',10,14,90,h-52,'<rect x="14" y="18" width="82" height="'+(h-62)+'" rx="6" fill="#f4efdf" stroke="#394655"/>'+label(29,38,'ESP32',14));

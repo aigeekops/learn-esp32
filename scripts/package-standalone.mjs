@@ -16,8 +16,17 @@ const [js,css,pattern,license,notices]=await Promise.all([
   readFile(resolve(dist,'circuit-pattern.svg'),'utf8'),
   readFile(resolve(dist,'LICENSE.txt'),'utf8'),readFile(resolve(dist,'THIRD_PARTY_NOTICES.txt'),'utf8')
 ]);
-const inlineCss=css.replace(/url\((['"]?)(?:\.\.\/|\.\/|\/)?circuit-pattern\.svg\1\)/g,
-  ()=>`url("data:image/svg+xml,${encodeURIComponent(pattern)}")`);
+const fontRefs=[...new Set([...css.matchAll(/url\((['"]?)(?:\.\.\/|\.\/|\/)?fonts\/([^)'"]+)\1\)/g)].map(match=>match[2]))];
+const fonts=new Map();
+await Promise.all(fontRefs.map(async file=>{
+  const data=await readFile(assetPath('fonts/'+file));
+  fonts.set(file,`data:font/woff2;base64,${data.toString('base64')}`);
+}));
+const inlineCss=css
+  .replace(/url\((['"]?)(?:\.\.\/|\.\/|\/)?circuit-pattern\.svg\1\)/g,
+    ()=>`url("data:image/svg+xml,${encodeURIComponent(pattern)}")`)
+  .replace(/url\((['"]?)(?:\.\.\/|\.\/|\/)?fonts\/([^)'"]+)\1\)/g,
+    (_,_quote,file)=>`url("${fonts.get(file)}")`);
 // JSON preserves the complete notices and cannot close the containing script element.
 const licenses=JSON.stringify({license,notices}).replaceAll('<','\\u003c');
 const html=index

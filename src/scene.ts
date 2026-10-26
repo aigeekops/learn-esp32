@@ -6,6 +6,7 @@ import { boardLeft,boardRight } from './lessons.ts';
 import type { Lesson, Part, Values } from './lessons.ts';
 import type { Snapshot } from './simulation.ts';
 import {fitCamera} from './camera-fit.ts';
+import type {CameraFrame} from './camera-fit.ts';
 import {breadboard, holePosition, mountedLeads, jumperSockets, physicalJumpers} from './breadboard.ts';
 interface Entry {group:T.Group; label:string; en:string; anchor:T.Vector3;}
 const colors={ink:0x303647,pcb:0x303e46,metal:0xc2c4bc,cream:0xeee8d9,black:0x252a33,gold:0xb9a260};
@@ -13,14 +14,14 @@ export class Workbench{
  renderer:T.WebGLRenderer; scene=new T.Scene(); camera=new T.OrthographicCamera(); root=new T.Group();
  entries=new Map<string,Entry>(); pins=new Map<string,T.Vector3>(); lights:T.Mesh[]=[]; flows:{curve:T.CatmullRomCurve3;dots:T.Mesh[];part:string;pin:string;tube:T.Mesh;count:number}[]=[];
  angle=.65;elevation=.85;zoom=1;pan=new T.Vector3(); boardX=0; private pointer:{x:number;y:number;moved:boolean;mode:string;part:string|null}|null=null;
- private ray=new T.Raycaster(); private ndc=new T.Vector2(); private target=new T.Vector3(); private cameraDestination=new T.Vector3(); private cameraAim=new T.Vector3(); private last=0; private hovered=''; private selected=''; private ring=new T.Group();private hoverRing=new T.Group();
+ private ray=new T.Raycaster(); private ndc=new T.Vector2(); private target=new T.Vector3(); private cameraDestination=new T.Vector3(); private cameraAim=new T.Vector3(); private last=0; private hovered=''; private selected=''; private ring=new T.Group();private ringReveal=0;
  private bounce?:{group:T.Group;baseY:number;start:number};private hoverHint:HTMLDivElement;private selectionLink:SVGSVGElement;
  private circuitBounds=[new T.Box3(new T.Vector3(-14,-2,-26),new T.Vector3(14,10,26))];private focusId='';private viewHeight=125;private desiredHeight=125;
  private assembly?:{start:number;board:T.Group;fromX:number;toX:number;incoming:{group:T.Object3D;position:T.Vector3;delay:number}[];outgoing:T.Group;duration:number};private materials:T.Material[]=[]; tags:HTMLDivElement; labelNodes=new Map<string,HTMLButtonElement>(); lesson!:Lesson; values:Values={};
  grid:T.GridHelper;private watermark:T.Mesh; settings={labels:true,grid:true,flow:true,autoRotate:false,reducedMotion:false};
- onSelect:(id:string)=>void; onInput:(key:string,v:number)=>void; onButton:(held:boolean)=>void;onKey:(index:number,held:boolean)=>void;
- constructor(public host:HTMLElement,callbacks:{select:(id:string)=>void;input:(key:string,v:number)=>void;button:(held:boolean)=>void;key:(index:number,held:boolean)=>void}){
-  this.onSelect=callbacks.select;this.onInput=callbacks.input;this.onButton=callbacks.button;this.onKey=callbacks.key;
+ onSelect:(id:string)=>void; onHover:(id:string)=>void; onInput:(key:string,v:number)=>void; onButton:(held:boolean)=>void;onKey:(index:number,held:boolean)=>void;
+ constructor(public host:HTMLElement,callbacks:{select:(id:string)=>void;hover:(id:string)=>void;input:(key:string,v:number)=>void;button:(held:boolean)=>void;key:(index:number,held:boolean)=>void}){
+  this.onSelect=callbacks.select;this.onHover=callbacks.hover;this.onInput=callbacks.input;this.onButton=callbacks.button;this.onKey=callbacks.key;
   this.renderer=new T.WebGLRenderer({antialias:true,alpha:true});this.renderer.setPixelRatio(Math.min(devicePixelRatio,2));this.renderer.setClearColor(0,0);this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFShadowMap;
   this.renderer.outputColorSpace=T.SRGBColorSpace;this.renderer.domElement.setAttribute('aria-label','交互式 ESP32 3D 视图：拖动平移，Q/E 旋转，滚轮缩放');this.renderer.domElement.setAttribute('role','img');this.renderer.domElement.tabIndex=0;this.host.append(this.renderer.domElement);
   this.scene.add(this.root,new T.HemisphereLight(0xfffcf2,0xb6a68b,2));
@@ -29,7 +30,7 @@ export class Workbench{
   this.grid=new T.GridHelper(600,150,0xbdb6a5,0xd0c7b5);this.grid.position.y=-1.9;this.grid.material.transparent=true;this.grid.material.opacity=.42;this.grid.material.depthWrite=false;this.scene.add(this.grid);this.scene.fog=new T.FogExp2(0xf3eedf,.0035);
   this.watermark=this.desktopWatermark();this.scene.add(this.watermark);
   this.tags=document.createElement('div');this.tags.className='scene-tags';this.host.append(this.tags);
-  this.ring=this.makeRing(.8);this.hoverRing=this.makeRing(.35);this.scene.add(this.ring,this.hoverRing);
+  this.ring=this.makeRing(.8);this.scene.add(this.ring);
   this.hoverHint=document.createElement('div');this.hoverHint.className='component-tooltip';this.hoverHint.setAttribute('role','tooltip');this.hoverHint.hidden=true;this.host.append(this.hoverHint);
   this.selectionLink=document.createElementNS('http://www.w3.org/2000/svg','svg');this.selectionLink.classList.add('selection-link');this.selectionLink.setAttribute('aria-hidden','true');this.selectionLink.innerHTML='<path/><circle r="5"/>';this.selectionLink.style.display='none';this.host.append(this.selectionLink);
   this.host.addEventListener('pointerleave',()=>this.setHover(''));
@@ -286,13 +287,15 @@ export class Workbench{
  }
  private setHover(id:string){
   if(this.assembly)id='';if(id===this.hovered)return;
-  this.restoreBounce();this.bounce=undefined;this.hovered=id;this.host.dataset.hoveredPart=id;
+  this.restoreBounce();this.bounce=undefined;this.hovered=id;this.host.dataset.hoveredPart=id;this.onHover(id);
   this.labelNodes.forEach((node,key)=>node.classList.toggle('hovered',key===id));
-  const e=this.entries.get(id);this.hoverHint.hidden=!e;this.hoverRing.visible=!!e;
+  const e=this.entries.get(id);this.hoverHint.hidden=!e;
   if(e&&!this.settings.reducedMotion)this.bounce={group:e.group,baseY:e.group.position.y,start:performance.now()};
  }
  select(id:string){
+  const changed=id!==this.selected;
   this.restoreBounce();this.bounce=undefined;this.selected=id;this.host.dataset.selectedPart=id;
+  if(changed&&id)this.ringReveal=performance.now();
   this.addTag(id);this.labelNodes.forEach((node,key)=>{node.classList.toggle('selected',key===id);node.setAttribute('aria-pressed',String(key===id));});
   this.ring.visible=!!this.entries.get(id);if(!id)this.selectionLink.style.display='none';
  }
@@ -307,15 +310,19 @@ export class Workbench{
   const right=new T.Vector3(Math.cos(this.angle),0,-Math.sin(this.angle)),up=new T.Vector3(-Math.sin(this.elevation)*Math.sin(this.angle),Math.cos(this.elevation),-Math.sin(this.elevation)*Math.cos(this.angle));
   this.target.copy(this.cameraAim).addScaledVector(right,(x-tx)*amount).addScaledVector(up,(ty-y)*amount);
   const plan=fitCamera(this.viewBounds(),this.angle,this.elevation,frame);
-  this.pan.copy(this.target).sub(new T.Vector3(plan.target.x,plan.target.y,plan.target.z));this.zoom=plan.height/this.desiredHeight;
+  this.pan.copy(this.target).sub(new T.Vector3(plan.target.x,plan.target.y,plan.target.z));
   this.cameraDestination.copy(this.target).add(new T.Vector3(Math.sin(this.angle)*130*Math.cos(this.elevation),Math.sin(this.elevation)*130,Math.cos(this.angle)*130*Math.cos(this.elevation)));
  }
  private drawInteraction(english:boolean){
-  for(const [id,ring] of [[this.selected,this.ring],[this.hovered,this.hoverRing]] as const){
-   const e=this.entries.get(id);ring.visible=!!e&&!this.assembly;if(!e)continue;
-   const box=new T.Box3().setFromObject(e.group),center=e.group.getWorldPosition(new T.Vector3());let radius=2.4,y=center.y+1;
+  // Hover only highlights the label and lifts the part; the halo belongs to the click selection.
+  const selected=this.entries.get(this.selected);this.ring.visible=!!selected&&!this.assembly;
+  if(selected){
+   const box=new T.Box3().setFromObject(selected.group),center=selected.group.getWorldPosition(new T.Vector3());let radius=2.4,y=center.y+1;
    if(!box.isEmpty()){box.getCenter(center);const size=box.getSize(new T.Vector3());radius=Math.max(1.6,Math.min(24,Math.hypot(size.x,size.z)*.55));y=Math.max(-1.8,box.min.y+.12);}
-   if(id.startsWith('pin-'))y=1.02;ring.position.set(center.x,y,center.z);ring.scale.setScalar(radius);
+   if(this.selected.startsWith('pin-'))y=1.02;this.ring.position.set(center.x,y,center.z);
+   const reveal=this.settings.reducedMotion?1:Math.max(0,Math.min(1,(performance.now()-this.ringReveal)/200)),eased=1-Math.pow(1-reveal,3);
+   this.ring.scale.setScalar(radius*(.9+.1*eased));
+   for(const child of this.ring.children)((child as T.Mesh).material as T.MeshBasicMaterial).opacity=.8*(.25+.75*eased);
   }
   const hovered=this.entries.get(this.hovered);this.hoverHint.hidden=!hovered||!!this.pointer||this.labelNodes.has(this.hovered)||!!this.assembly;
   if(hovered&&!this.hoverHint.hidden){const point=hovered.group.localToWorld(hovered.anchor.clone()).project(this.camera);this.hoverHint.textContent=english?hovered.en:hovered.label;const x=(point.x+1)/2*this.host.clientWidth,y=(1-point.y)/2*this.host.clientHeight;
@@ -346,7 +353,7 @@ export class Workbench{
   if(!boxes.length){const p=entry.group.getWorldPosition(new T.Vector3());boxes.push(new T.Box3().setFromCenterAndSize(p,new T.Vector3(6,6,6)));}
   return boxes;
  }
- private frameArea(){
+ private frameCandidates(){
   const w=this.host.clientWidth||600,h=this.host.clientHeight||500,rect=this.host.getBoundingClientRect();
   const frame={width:w,height:h,left:24,top:32,right:w-24,bottom:h-62};
   const schematic=this.host.querySelector<HTMLElement>('.schematic');
@@ -364,18 +371,26 @@ export class Workbench{
     Object.assign(frame,candidates.sort((a,b)=>area(b)-area(a))[0]);
    }
   }
-  if(schematic&&!schematic.hidden){const panel=schematic.getBoundingClientRect();const right={...frame,left:Math.max(frame.left,panel.right-rect.left+18)},below={...frame,top:Math.max(frame.top,panel.bottom-rect.top+18)};const area=(f:typeof frame)=>Math.max(0,f.right-f.left)*Math.max(0,f.bottom-f.top);return area(right)>area(below)?right:below;}
-  return frame;
+  if(schematic&&!schematic.hidden){const panel=schematic.getBoundingClientRect();return [{...frame,left:Math.max(frame.left,panel.right-rect.left+18)},{...frame,top:Math.max(frame.top,panel.bottom-rect.top+18)}];}
+  return [frame];
  }
+ /** Pick the clear area that lets the board render largest, not merely the widest one. */
+ private bestFit(){
+  const bounds=this.viewBounds();let best:{frame:CameraFrame;plan:ReturnType<typeof fitCamera>}|undefined;
+  for(const frame of this.frameCandidates()){const plan=fitCamera(bounds,this.angle,this.elevation,frame);if(!best||plan.height<best.plan.height)best={frame,plan};}
+  return best!;
+ }
+ private bestPlan(){return this.bestFit().plan;}
+ private frameArea(){return this.bestFit().frame;}
  focus(id:string){if(!this.entries.has(id))return;this.finishAssembly();this.focusId=id;this.pan.set(0,0,0);this.zoom=1;this.select(id);this.updateCamera();}
- center(){return new T.Vector3().copy(fitCamera(this.viewBounds(),this.angle,this.elevation,this.frameArea()).target);}
+ center(){return new T.Vector3().copy(this.bestPlan().target);}
  reset(){this.focusId='';this.pan.set(0,0,0);this.angle=.25;this.elevation=.70;this.zoom=1;this.select('');this.updateCamera();}
  turn(d:number){this.angle+=d*.26;this.updateCamera();}
  magnify(d:number){this.zoom=Math.min(5,Math.max(.4,this.zoom*d));this.updateCamera();}
  panBy(x:number,z:number){this.pan.x+=x;this.pan.z+=z;this.updateCamera();}
  resize(){const w=this.host.clientWidth,h=this.host.clientHeight;if(!w||!h)return;this.renderer.setSize(w,h);this.updateCamera();}
  updateCamera(){
-  const plan=fitCamera(this.viewBounds(),this.angle,this.elevation,this.frameArea());
+  const plan=this.bestPlan();
   this.desiredHeight=plan.height/this.zoom;this.target.copy(plan.target).add(this.pan);
   this.cameraDestination.copy(this.target).add(new T.Vector3(Math.sin(this.angle)*130*Math.cos(this.elevation),Math.sin(this.elevation)*130,Math.cos(this.angle)*130*Math.cos(this.elevation)));
   if(!this.last||this.settings.reducedMotion){this.camera.position.copy(this.cameraDestination);this.cameraAim.copy(this.target);this.viewHeight=this.desiredHeight;}
@@ -413,7 +428,7 @@ export class Workbench{
   p.x=e.clientX;p.y=e.clientY;
  }
  cancel(){if(this.pointer?.mode==='button'||this.pointer?.mode==='water')this.onButton(false);if(this.pointer?.mode==='key')this.onKey(Number(this.pointer.part!.slice(4)),false);this.pointer=null;this.setHover('');}
- up(){const p=this.pointer;if(!p)return;if(p.mode==='button'||p.mode==='water')this.onButton(false);if(p.mode==='key')this.onKey(Number(p.part!.slice(4)),false);if(!p.moved&&p.part){this.select(p.part);this.onSelect(p.part);}this.pointer=null;}
+ up(){const p=this.pointer;if(!p)return;if(p.mode==='button'||p.mode==='water')this.onButton(false);if(p.mode==='key')this.onKey(Number(p.part!.slice(4)),false);if(!p.moved){if(p.part){this.select(p.part);this.onSelect(p.part);}else if(p.mode==='pan'&&this.selected){this.select('');this.onSelect('');}}this.pointer=null;}
  draw(time:number,s:Snapshot|undefined,english=false){
   this.restoreBounce();
   if(this.assembly)this.animateAssembly(time-this.assembly.start);
