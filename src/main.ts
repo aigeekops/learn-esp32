@@ -29,19 +29,19 @@ let language=load('language','zh');
 const english=language!=='zh';
 document.documentElement.lang=language==='zh'?'zh-CN':language;
 const packs:Record<string,string[]>={
-zh:['ESP32 入门','探索 · 理解 · 动手','首页','课程','元件','运行模拟','设置','语言','概览','引脚图','示例','规格','动手试试','串口监视器','已停止','运行中','基础','复制代码','运行程序','停止程序'],
-en:['LEARN ESP32','Explore · Understand · Build','Home','Lessons','Components','Simulator','Settings','Language','Overview','Pinout','Example','Specifications','Try it yourself','Serial monitor','Stopped','Running','Basics','Copy code','Run sketch','Stop sketch'],
-es:['APRENDE ESP32','Explora · Comprende · Construye','Inicio','Lecciones','Componentes','Simulador','Ajustes','Idioma','Resumen','Pines','Ejemplo','Especificaciones','Pruébalo','Monitor serie','Detenido','En ejecución','Básico','Copiar código','Ejecutar','Detener'],
-pt:['APRENDA ESP32','Explore · Entenda · Construa','Início','Aulas','Componentes','Simulador','Configurações','Idioma','Visão geral','Pinos','Exemplo','Especificações','Experimente','Monitor serial','Parado','Executando','Básico','Copiar código','Executar','Parar'],
-fr:['APPRENDRE ESP32','Explorer · Comprendre · Construire','Accueil','Leçons','Composants','Simulateur','Réglages','Langue','Aperçu','Brochage','Exemple','Spécifications','À vous de jouer','Moniteur série','Arrêté','En cours','Bases','Copier le code','Exécuter','Arrêter'],
-de:['ESP32 LERNEN','Entdecken · Verstehen · Bauen','Start','Lektionen','Bauteile','Simulator','Einstellungen','Sprache','Übersicht','Pinbelegung','Beispiel','Daten','Ausprobieren','Serieller Monitor','Gestoppt','Läuft','Grundlagen','Code kopieren','Starten','Stoppen'],
-it:['IMPARA ESP32','Esplora · Comprendi · Costruisci','Home','Lezioni','Componenti','Simulatore','Impostazioni','Lingua','Panoramica','Pin','Esempio','Specifiche','Prova tu','Monitor seriale','Fermo','In esecuzione','Basi','Copia codice','Esegui','Ferma'],
-tr:['ESP32 ÖĞREN','Keşfet · Anla · Yap','Ana sayfa','Dersler','Bileşenler','Simülatör','Ayarlar','Dil','Genel bakış','Pinler','Örnek','Özellikler','Kendin dene','Seri monitör','Durdu','Çalışıyor','Temel','Kodu kopyala','Çalıştır','Durdur'],
-id:['BELAJAR ESP32','Jelajahi · Pahami · Buat','Beranda','Pelajaran','Komponen','Simulator','Pengaturan','Bahasa','Ringkasan','Pin','Contoh','Spesifikasi','Coba sendiri','Monitor serial','Berhenti','Berjalan','Dasar','Salin kode','Jalankan','Hentikan'],
-ja:['ESP32 入門','探索 · 理解 · 実践','ホーム','レッスン','部品','シミュレータ','設定','言語','概要','ピン配置','例','仕様','試してみよう','シリアルモニタ','停止中','実行中','基礎','コードをコピー','実行','停止'],
-ko:['ESP32 입문','탐색 · 이해 · 만들기','홈','강의','부품','시뮬레이터','설정','언어','개요','핀 배치','예제','사양','직접 해보기','시리얼 모니터','정지','실행 중','기초','코드 복사','실행','정지'],
-hi:['ESP32 सीखें','खोजें · समझें · बनाएँ','होम','पाठ','घटक','सिम्युलेटर','सेटिंग','भाषा','परिचय','पिन','उदाहरण','विवरण','स्वयं आज़माएँ','सीरियल मॉनिटर','रुका','चल रहा है','बुनियाद','कोड कॉपी करें','चलाएँ','रोकें'],
-he:['ללמוד ESP32','לגלות · להבין · לבנות','בית','שיעורים','רכיבים','סימולטור','הגדרות','שפה','סקירה','פינים','דוגמה','מפרט','נסו בעצמכם','צג טורי','נעצר','פועל','יסודות','העתקת קוד','הפעלה','עצירה']
+zh:['ESP32 机器人实验室','从 0 到 1，在线造一台机器人','首页','课程','元件','运行模拟','设置','语言','概览','引脚图','示例','规格','动手试试','串口监视器','已停止','运行中','基础','复制代码','运行程序','停止程序'],
+en:['ESP32 ROBOT LAB','Build a robot, end to end','Home','Lessons','Components','Simulator','Settings','Language','Overview','Pinout','Example','Specifications','Try it yourself','Serial monitor','Stopped','Running','Basics','Copy code','Run sketch','Stop sketch'],
+es:['LABORATORIO DE ROBOTS ESP32','De 0 a 1, construye un robot','Inicio','Lecciones','Componentes','Simulador','Ajustes','Idioma','Resumen','Pines','Ejemplo','Especificaciones','Pruébalo','Monitor serie','Detenido','En ejecución','Básico','Copiar código','Ejecutar','Detener'],
+pt:['LABORATÓRIO DE ROBÔS ESP32','De 0 a 1, construa um robô','Início','Aulas','Componentes','Simulador','Configurações','Idioma','Visão geral','Pinos','Exemplo','Especificações','Experimente','Monitor serial','Parado','Executando','Básico','Copiar código','Executar','Parar'],
+fr:['LABO ROBOT ESP32','De zéro à un, construis un robot','Accueil','Leçons','Composants','Simulateur','Réglages','Langue','Aperçu','Brochage','Exemple','Spécifications','À vous de jouer','Moniteur série','Arrêté','En cours','Bases','Copier le code','Exécuter','Arrêter'],
+de:['ESP32 ROBOTERLABOR','Von null auf eins zum Roboter','Start','Lektionen','Bauteile','Simulator','Einstellungen','Sprache','Übersicht','Pinbelegung','Beispiel','Daten','Ausprobieren','Serieller Monitor','Gestoppt','Läuft','Grundlagen','Code kopieren','Starten','Stoppen'],
+it:['LABORATORIO ROBOT ESP32','Da zero a uno, costruisci un robot','Home','Lezioni','Componenti','Simulatore','Impostazioni','Lingua','Panoramica','Pin','Esempio','Specifiche','Prova tu','Monitor seriale','Fermo','In esecuzione','Basi','Copia codice','Esegui','Ferma'],
+tr:['ESP32 ROBOT LABORATUVARI','Sıfırdan bire robot yap','Ana sayfa','Dersler','Bileşenler','Simülatör','Ayarlar','Dil','Genel bakış','Pinler','Örnek','Özellikler','Kendin dene','Seri monitör','Durdu','Çalışıyor','Temel','Kodu kopyala','Çalıştır','Durdur'],
+id:['LAB ROBOT ESP32','Dari nol ke satu, buat robot','Beranda','Pelajaran','Komponen','Simulator','Pengaturan','Bahasa','Ringkasan','Pin','Contoh','Spesifikasi','Coba sendiri','Monitor serial','Berhenti','Berjalan','Dasar','Salin kode','Jalankan','Hentikan'],
+ja:['ESP32 ロボット実験室','0 から 1 へ、ロボットを作る','ホーム','レッスン','部品','シミュレータ','設定','言語','概要','ピン配置','例','仕様','試してみよう','シリアルモニタ','停止中','実行中','基礎','コードをコピー','実行','停止'],
+ko:['ESP32 로봇 랩','0에서 1까지, 로봇 만들기','홈','강의','부품','시뮬레이터','설정','언어','개요','핀 배치','예제','사양','직접 해보기','시리얼 모니터','정지','실행 중','기초','코드 복사','실행','정지'],
+hi:['ESP32 रोबोट लैब','शून्य से एक तक रोबोट बनाएँ','होम','पाठ','घटक','सिम्युलेटर','सेटिंग','भाषा','परिचय','पिन','उदाहरण','विवरण','स्वयं आज़माएँ','सीरियल मॉनिटर','रुका','चल रहा है','बुनियाद','कोड कॉपी करें','चलाएँ','रोकें'],
+he:['מעבדת רובוטים ESP32','מאפס לאחד בונים רובוט','בית','שיעורים','רכיבים','סימולטור','הגדרות','שפה','סקירה','פינים','דוגמה','מפרט','נסו בעצמכם','צג טורי','נעצר','פועל','יסודות','העתקת קוד','הפעלה','עצירה']
 };
 const ui=packs[language]??packs.zh;
 const text=(zh:string,en:string)=>english?en:zh;
@@ -89,7 +89,7 @@ function updateParam(key:string,value:number|string){
 }
 function renderCards(){
  const track=$('.course-track'),scroll=track.scrollLeft;
- track.innerHTML=lessons.map((l,i)=>'<button class="course-card '+(l.id===lesson.id?'active':'')+'" data-lesson="'+l.id+'" aria-label="'+text('第 '+(i+1)+' 课：','Lesson '+(i+1)+': ')+title(l)+'">'+thumb(lessonArtwork[l.id])+'<span>'+(i+1)+'. '+title(l)+'</span>'+icon('right')+(done.has(l.id)?'<i class="done-mark">✓</i>':'')+'</button>').join('');
+ track.innerHTML=lessons.map((l,i)=>'<button class="course-card '+(l.id===lesson.id?'active':'')+'" data-lesson="'+l.id+'" aria-label="'+text('第 '+(i+1)+' 课：','Lesson '+(i+1)+': ')+title(l)+'">'+thumb(lessonArtwork[l.id])+'<span>'+(i+1)+'. '+title(l)+'</span>'+(l.optional?'<i class="optional-mark">'+text('选做','Optional')+'</i>':'')+icon('right')+(done.has(l.id)?'<i class="done-mark">✓</i>':'')+'</button>').join('');
  document.querySelectorAll<HTMLButtonElement>('.course-card').forEach(b=>b.onclick=()=>setLesson(b.dataset.lesson!));
  track.scrollLeft=scroll;
  $('#progress-count').textContent=done.size+'/'+lessons.length;$('#progress-fill').style.width=done.size/lessons.length*100+'%';$('.track').setAttribute('aria-valuenow',String(done.size));

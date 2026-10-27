@@ -2,13 +2,30 @@
   <a href="README.md">中文</a> · <a href="README.en.md">English</a>
 </p>
 
-# Learn ESP32 · Interactive ESP32 Learning Site
+# Learn ESP32 · Robot 0→1 Online Lab
 
-Learn ESP32 in the browser through 3D circuits, live parameter tuning, and Arduino C++ examples. Includes 25 lessons, targeting the **ESP32-DevKitC V4 / ESP32-WROOM-32E (38-pin)** board.
+Build a differential-drive robot end to end in the browser with an ESP32: wire it, code it, tune it, close the loop, integrate it. 25 lessons, targeting the **ESP32-DevKitC V4 / ESP32-WROOM-32E (38-pin)** board.
 
-[Curriculum](docs/CURRICULUM.md) · [Robotics track](docs/ROBOTICS_COURSES.md) · [Programming Guide](tutorials/arduino-esp32-syntax/README.md) · [Contributing](CONTRIBUTING.md) · [MIT License](LICENSE)
+It does not replace hardware. It replaces the expensive trial-and-error before hardware: miswired pins, a cooked driver, a wrong CPR, a reversed PI sign, a forgotten command timeout.
 
-![Learn ESP32 interactive site](docs/images/desktop-board.png)
+[Curriculum](docs/CURRICULUM.md) · [Robotics track](docs/ROBOTICS_COURSES.md) · [Pin budget](docs/PIN_MAP.md) · [Programming Guide (WeChat)](https://mp.weixin.qq.com/s/fG325zBvtpMfLdrcj9bx6g) · [Contributing](CONTRIBUTING.md) · [MIT License](LICENSE)
+
+![ESP32 robot lab](docs/images/desktop-board.png)
+
+## Positioning
+
+- **The ESP32 is the vehicle; the robot system is the point.** Lessons 1–12 cover levels, PWM, ADC, I²C and timing; 13–16 make the robot commandable from outside; 17–25 connect sensing, actuation, feedback, communication and safe stop into one machine.
+- **"0→1" means the whole chain runs, not "meet the board".** By the end you should command `TWIST` velocity (m/s, rad/s), read measured speed back, stop at an obstacle, and stop when the link dies.
+- **Simulation buys down trial-and-error, not hardware.** Every effect has units, every parameter has a source, every sketch exports as `.ino`; wiring and flashing still need real parts.
+- **Fewer lessons, harder acceptance.** Five stages, what you should be able to do, and what failure looks like:
+
+| Stage | You should be able to | Common failure |
+| --- | --- | --- |
+| Concepts | point at the wire that would fry the board, and at an input-only pin | 5 V straight into a GPIO; ADC2 while Wi-Fi is on |
+| Wiring | rebuild a lesson circuit without the answer, and say why a part needs its own supply | missing common ground; un-divided ECHO; motor fed from 3V3 |
+| Code | explain why each line is there, and predict the effect of a parameter change | treating PWM as a speed command; delay-based multitasking |
+| Closed loop | 90 RPM under 30% load; 1 m straight within 5 cm | wrong CPR; reversed encoder; jittery PI period |
+| Integration | command <100 ms; stop at an obstacle; stop 1 s after link loss; still on boot | no command timeout; no fail-safe |
 
 ## Features and Boundaries
 
@@ -16,7 +33,7 @@ Learn ESP32 in the browser through 3D circuits, live parameter tuning, and Ardui
 - Parameters, example code, schematics, scenarios, and serial feedback are linked together.
 - Four lesson tabs, code copy, simulated run/stop, settings, and local learning progress.
 - Classroom demos for knob dimming, a night light, a mini piano, a smart plant, Wi-Fi, HTTP, and web control.
-- Robotics lessons cover ranging, motor drivers, encoders, PI speed control, differential drive, UART, BLE, ESP-NOW, and a complete two-wheel robot.
+- The robotics spine covers ranging, motor drivers, encoders, PI speed control, differential drive, UART, BLE, ESP-NOW, and a complete two-wheel robot; external commands follow ROS 2 Twist semantics (m/s, rad/s).
 - Lessons are in Chinese; English instructions and a 13-language UI entry are provided. Full lesson text for the other 11 languages is not yet translated.
 
 **This is a parametric teaching model.** It does not execute arbitrary C++, does not connect to your computer's Wi-Fi, Bluetooth, serial ports, or a real ESP32, and does not simulate breadboard hole conductivity. Real hardware requires separate compilation, flashing, and wiring. It is an independent community learning project.
@@ -61,22 +78,28 @@ Learning progress is stored in the visitor's browser and is not synced across de
 
 ## Lessons
 
+Lessons 1–16 are the parts bin: 1–12 cover levels, PWM, ADC, I²C and timing; 13–16 hand control to an outside device. Lessons 17–25 are the machine itself: sensing, actuation, feedback, communication and safe stop. Grouping is for reading only; nothing is locked.
+
+Wiring comes in two stages: lessons 1–16 are breadboard experiments, lessons 17–25 assemble the robot on a [fixed pin map](docs/PIN_MAP.md). The one-time migration between them is documented in the pin budget.
+
 | Lesson | Content |
 | --- | --- |
 | 01–04 | Meet the ESP32, blink, button, knob dimming |
 | 05–08 | RGB mixing, night light, temperature alarm, OLED |
-| 09–12 | Mini piano, servo, smart plant, non-blocking control |
-| 13–16 | Wi-Fi, web temperature, web LED control, connected plant monitor |
+| 09–12 | Non-blocking control, servo, smart plant, mini piano (optional) |
+| 13–16 | Wi-Fi, web temperature, web LED control (optional), connected plant monitor (optional) |
 | 17–20 | Ultrasonic ranging, motor drive, encoder feedback, PI speed control |
-| 21–25 | Differential drive, UART, BLE, ESP-NOW, complete two-wheel robot |
+| 21–25 | Differential drive, UART, BLE (optional), ESP-NOW (optional), complete two-wheel robot |
+
+Lessons marked optional are not on the main dependency chain and can be skipped; lessons 23 and 24 are two carriers of the same command contract, so either one is enough.
 
 See [lesson definitions](docs/CURRICULUM.md) for lesson parameters, pins, and the four-tab content.
 
 ## Programming Guide
 
-The standalone [Arduino / ESP32 syntax guide](tutorials/arduino-esp32-syntax/README.md) is part of the six-month robotics self-study series. It includes a Chinese article, 16 versioned course snapshots, three exercises, and editable SVG/PNG artwork with its rendering script.
+[Six Months of Robotics, Part 7: Arduino / ESP32 syntax from zero](https://mp.weixin.qq.com/s/fG325zBvtpMfLdrcj9bx6g) (WeChat, Chinese) walks from variables, branches, loops and functions to arrays, objects, callbacks, a display and networking, with 16 lesson snapshots and three standalone exercises.
 
-The guide is maintained independently from the live lessons. See its [version record](tutorials/arduino-esp32-syntax/VERSION.json) when comparing lesson order, pins, or APIs.
+The article is published on WeChat; the cover, SVG/PNG artwork, rendering script and 16 example sketches stay in [the tutorial folder](tutorials/arduino-esp32-syntax/README.md). The guide is maintained independently from the live lessons; see its [version record](tutorials/arduino-esp32-syntax/VERSION.json) when comparing lesson order, pins, or APIs.
 
 ## Real Firmware
 

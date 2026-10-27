@@ -50,6 +50,7 @@ function motorCode(dual:boolean,feedback:boolean,controlled:boolean,mode:string)
 const int PWM_L = 25, IN_L1 = 18, IN_L2 = 19, STBY = 4;  //~左轮 PWM/方向/使能~left: PWM, dir, standby
 ${dual?'const int PWM_R = 26, IN_R1 = 23, IN_R2 = 27;':''}
 const float MAX_RPM = 180.0f, COMMAND_LIMIT = 150.0f;
+${dual?'//~轮径与轮距用于 Twist 换算，必须实测标定~wheel radius and track for Twist, measure them\nconst float WHEEL_RADIUS = @@wheelRadius@@, TRACK_WIDTH = @@trackWidth@@;':''}
 float targetL = 0, targetR = 0, rpmL = 0, rpmR = 0;
 int dutyL = 0, dutyR = 0;
 ${feedback?String.raw`
@@ -121,9 +122,23 @@ float pendingL = 0, pendingR = 0;
 uint32_t pendingAt = 0, lastCommandAt = 0;
 bool commandFresh = false;
 volatile bool commandPending = false;
+//~ROS 2 Twist 语义：v 为线速度 m/s，omega 为偏航角速度 rad/s~ROS 2 Twist: v in m/s, omega in rad/s
+const float MAX_LINEAR = 0.25f, MAX_ANGULAR = 2.0f;
+bool twistToWheels(float v, float omega, float &left, float &right) {
+  if (!isfinite(v) || !isfinite(omega)) return false;
+  if (fabsf(v) > MAX_LINEAR || fabsf(omega) > MAX_ANGULAR) return false;
+  left = (v - omega * TRACK_WIDTH / 2) * 60.0f / (2 * PI * WHEEL_RADIUS);
+  right = (v + omega * TRACK_WIDTH / 2) * 60.0f / (2 * PI * WHEEL_RADIUS);
+  float peak = fmaxf(fabsf(left), fabsf(right));
+  if (peak > COMMAND_LIMIT) { float scale = COMMAND_LIMIT / peak; left *= scale; right *= scale; }  //~等比缩放保曲率~scale together to keep curvature
+  return true;
+}
 bool parseCommand(const String &line, float &left, float &right) {
   if (line == "STOP") { left = right = 0; return true; }
-  int consumed = 0;
+  int consumed = 0; float v, omega;
+  if (sscanf(line.c_str(), "TWIST,%f,%f%n", &v, &omega, &consumed) == 2 && consumed == int(line.length()))
+    return twistToWheels(v, omega, left, right);
+  //~台架调试才直接给轮速；对外接口用 TWIST~bench only: wheel RPM; the external interface is TWIST
   if (sscanf(line.c_str(), "SET,%f,%f%n", &left, &right, &consumed) != 2 || consumed != int(line.length())) return false;
   return isfinite(left) && isfinite(right) && fabsf(left) <= COMMAND_LIMIT && fabsf(right) <= COMMAND_LIMIT;
 }
@@ -188,9 +203,10 @@ const espnowPacket=String.raw`
 //~填另一块板的 STA MAC，开机时会打印~put the other board's STA MAC here
 const uint8_t PEER_MAC[6] = {0, 0, 0, 0, 0, 0};
 const uint8_t RADIO_CHANNEL = @@channel@@;
+//~同一包结构：v(mm/s)、omega(mrad/s) 与实测轮速~one packet: v (mm/s), omega (mrad/s), measured RPM
 struct __attribute__((packed)) RadioPacket {
   uint32_t magic; uint8_t version, kind; uint16_t reserved;
-  uint32_t sequence; int16_t left, right, actualLeft, actualRight;
+  uint32_t sequence; int16_t velocity, yawRate, actualLeft, actualRight;
 };
 const uint32_t PACKET_MAGIC = 0x45535052;
 bool radioReady = false;
@@ -221,14 +237,15 @@ uint32_t replySequence = 0;
 void onRadioReceive(const esp_now_recv_info_t *info, const uint8_t *data, int length) {
   if (memcmp(info->src_addr, PEER_MAC, 6) != 0 || length != sizeof(RadioPacket)) return;
   RadioPacket packet; memcpy(&packet, data, sizeof(packet));
-  if (packet.magic != PACKET_MAGIC || packet.version != 1 || packet.kind != 1 ||
-      abs(int(packet.left)) > COMMAND_LIMIT || abs(int(packet.right)) > COMMAND_LIMIT) return;
+  if (packet.magic != PACKET_MAGIC || packet.version != 2 || packet.kind != 1) return;
+  float left, right;
+  if (!twistToWheels(packet.velocity / 1000.0f, packet.yawRate / 1000.0f, left, right)) return;
   portENTER_CRITICAL(&radioMux);
   if (haveSequence && int32_t(packet.sequence - latestSequence) <= 0) { portEXIT_CRITICAL(&radioMux); return; }
   latestSequence = packet.sequence; haveSequence = true;
   replySequence = packet.sequence; stateReplyPending = true;
   portEXIT_CRITICAL(&radioMux);
-  queueTargets(packet.left, packet.right);
+  queueTargets(left, right);
 }
 void setup() {
   Serial.begin(115200); setupDrive();
@@ -243,8 +260,11 @@ void loop() {
   portEXIT_CRITICAL(&radioMux);
   if (reply && radioReady) {
     consumeCommand(); expireCommand();
-    RadioPacket packet = {PACKET_MAGIC, 1, 2, 0, sequence,
-      int16_t(lroundf(targetL)), int16_t(lroundf(targetR)), int16_t(lroundf(rpmL)), int16_t(lroundf(rpmR))};
+    //~回包带目标 v、omega 与实测轮速~reply carries target v, omega and measured RPM
+    float vl = targetL * 2 * PI * WHEEL_RADIUS / 60, vr = targetR * 2 * PI * WHEEL_RADIUS / 60;
+    RadioPacket packet = {PACKET_MAGIC, 2, 2, 0, sequence,
+      int16_t(lroundf((vl + vr) / 2 * 1000)), int16_t(lroundf((vr - vl) / TRACK_WIDTH * 1000)),
+      int16_t(lroundf(rpmL)), int16_t(lroundf(rpmR))};
     esp_now_send(PEER_MAC, reinterpret_cast<const uint8_t*>(&packet), sizeof(packet));
   }
   static uint32_t reportedAt = 0;
@@ -255,24 +275,24 @@ void loop() {
 
 function espnowSender():string {
  return '#include <Arduino.h>\n#include <math.h>\n'+espnowPacket+String.raw`
-// Type SET,60,60 or STOP followed by a newline in the USB serial monitor.
-// Send commands periodically (e.g. every 200 ms) to keep the receiver moving.
-const float COMMAND_LIMIT = 150;
+//~串口输入 TWIST,0.15,0 或 STOP，每次换行一条~Type TWIST,0.15,0 or STOP, one per line
+//~持续运动需周期发送，例如每 200 ms~resend every 200 ms for continuous motion
+const float MAX_LINEAR = 0.25f, MAX_ANGULAR = 2.0f;
 uint32_t nextSequence = 1;
 String rxFrame; bool frameOverflow = false;
 portMUX_TYPE statusMux = portMUX_INITIALIZER_UNLOCKED;
 RadioPacket receivedState = {}; volatile bool stateReady = false;
-bool parseCommand(const String &line, float &left, float &right) {
-  if (line == "STOP") { left = right = 0; return true; }
+bool parseCommand(const String &line, float &v, float &omega) {
+  if (line == "STOP") { v = omega = 0; return true; }
   int consumed = 0;
-  return sscanf(line.c_str(), "SET,%f,%f%n", &left, &right, &consumed) == 2 &&
-    consumed == int(line.length()) && isfinite(left) && isfinite(right) &&
-    fabsf(left) <= COMMAND_LIMIT && fabsf(right) <= COMMAND_LIMIT;
+  return sscanf(line.c_str(), "TWIST,%f,%f%n", &v, &omega, &consumed) == 2 &&
+    consumed == int(line.length()) && isfinite(v) && isfinite(omega) &&
+    fabsf(v) <= MAX_LINEAR && fabsf(omega) <= MAX_ANGULAR;
 }
 void onRadioReceive(const esp_now_recv_info_t *info, const uint8_t *data, int length) {
   if (memcmp(info->src_addr, PEER_MAC, 6) != 0 || length != sizeof(RadioPacket)) return;
   RadioPacket packet; memcpy(&packet, data, sizeof(packet));
-  if (packet.magic != PACKET_MAGIC || packet.version != 1 || packet.kind != 2) return;
+  if (packet.magic != PACKET_MAGIC || packet.version != 2 || packet.kind != 2) return;
   portENTER_CRITICAL(&statusMux); receivedState = packet; stateReady = true; portEXIT_CRITICAL(&statusMux);
 }
 void setup() {
@@ -283,10 +303,10 @@ void loop() {
   while (Serial.available()) {
     char ch = char(Serial.read()); if (ch == '\r') continue;
     if (ch == '\n') {
-      float left, right;
-      if (!frameOverflow && parseCommand(rxFrame, left, right) && radioReady) {
-        RadioPacket packet = {PACKET_MAGIC, 1, 1, 0, nextSequence++,
-          int16_t(lroundf(left)), int16_t(lroundf(right)), 0, 0};
+      float v, omega;
+      if (!frameOverflow && parseCommand(rxFrame, v, omega) && radioReady) {
+        RadioPacket packet = {PACKET_MAGIC, 2, 1, 0, nextSequence++,
+          int16_t(lroundf(v * 1000)), int16_t(lroundf(omega * 1000)), 0, 0};
         esp_err_t result = esp_now_send(PEER_MAC, reinterpret_cast<const uint8_t*>(&packet), sizeof(packet));
         Serial.println(result == ESP_OK ? "QUEUED (await STATE reply)" : "ERR send queue");
       } else Serial.println("ERR invalid command or radio not ready");
@@ -300,8 +320,9 @@ void loop() {
   portENTER_CRITICAL(&statusMux);
   if (stateReady) { state = receivedState; stateReady = false; ready = true; }
   portEXIT_CRITICAL(&statusMux);
-  if (ready) Serial.printf("STATE seq=%lu target=%d,%d measured=%d,%d\n",
-    (unsigned long)state.sequence, state.left, state.right, state.actualLeft, state.actualRight);
+  if (ready) Serial.printf("STATE seq=%lu v=%.2f w=%.2f rpm=%d,%d\n",
+    (unsigned long)state.sequence, state.velocity / 1000.0f, state.yawRate / 1000.0f,
+    state.actualLeft, state.actualRight);
 }
 `;
 }
@@ -379,7 +400,6 @@ void loop() {
  if(id==='robot')text+=rangeCode;
  if(id==='ble')text+=bleCode;
  if(id==='differential')text+=String.raw`
-const float WHEEL_RADIUS = @@wheelRadius@@, TRACK_WIDTH = @@trackWidth@@;
 void differentialTargets() {
   float v = @@linear@@, omega = @@angular@@;
   targetL = (v - omega * TRACK_WIDTH / 2) * 60 / (2 * PI * WHEEL_RADIUS);
@@ -387,6 +407,9 @@ void differentialTargets() {
   float peak = fmaxf(fabsf(targetL), fabsf(targetR));
   if (peak > COMMAND_LIMIT) { float scale = COMMAND_LIMIT / peak; targetL *= scale; targetR *= scale; }
 }
+`;
+ if(id==='differential'||id==='robot')text+=String.raw`
+//~里程计：用实测轮速积分位姿，打滑和轮径误差会累积~odometry: integrate measured wheels, drift accumulates
 float x = 0, y = 0, heading = 0;
 void updateOdometry() {
   static uint32_t updatedAt = 0;
@@ -409,13 +432,13 @@ void updateOdometry() {
  if(communication)text+='  consumeCommand(); expireCommand();\n';
  if(id==='robot')text+='  updateRange();\n  bool blocked = !rangeValid || distanceCm <= STOP_CM;\n  if (blocked) { targetL = targetR = 0; commandFresh = false; stopDrive(); }\n  updateDrive();\n';
  else {if(id==='differential')text+='  differentialTargets();\n';text+='  updateDrive();\n';}
- if(id==='differential')text+='  updateOdometry();\n';
+ if(id==='differential'||id==='robot')text+='  updateOdometry();\n';
  text+='  static uint32_t reportedAt = 0;\n  if (millis() - reportedAt >= 200) {\n    reportedAt = millis();\n';
  if(id==='motor')text+='    Serial.printf("PWM=%d (open loop; no speed sensor in this lesson)\\n", dutyL);\n';
  else if(id==='encoder')text+='    Serial.printf("COUNT=%ld RPM=%.1f PWM=%d\\n", (long)previousL, rpmL, dutyL);\n';
  else if(id==='speed')text+='    Serial.printf("TARGET=%.1f RPM=%.1f PWM=%d\\n", targetL, rpmL, dutyL);\n';
  else if(id==='differential')text+='    Serial.printf("TARGET=%.1f,%.1f RPM=%.1f,%.1f X=%.3f Y=%.3f HEADING=%.3f\\n", targetL, targetR, rpmL, rpmR, x, y, heading);\n';
  else if(id==='uart')text+='    Serial2.println(stateLine()); Serial.println(stateLine());\n';
- else if(id==='robot')text+='    String state = stateLine() + (rangeValid ? String(",DISTANCE=") + String(distanceCm, 1) : String(",DISTANCE=INVALID"));\n    Serial2.println(state); Serial.println(state);\n';
+ else if(id==='robot')text+='    String state = stateLine() + (rangeValid ? String(",DISTANCE=") + String(distanceCm, 1) : String(",DISTANCE=INVALID")) + String(",POSE=") + String(x, 3) + String(",") + String(y, 3) + String(",") + String(heading, 3);\n    Serial2.println(state); Serial.println(state);\n';
  text+='  }\n}\n';return text;
 }

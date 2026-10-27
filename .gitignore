@@ -24,3 +24,6 @@ TRANSFER_MANIFEST.sha256
 
 # Local agent workspace
 .workbuddy/
+
+# Local-only positioning note, not part of the published repository
+docs/POSITIONING.md

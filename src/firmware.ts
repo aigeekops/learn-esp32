@@ -154,10 +154,14 @@ function rawTemplate(l:Lesson,values?:Values):string {
 const int NOTES[] = {262, 294, 330, 349, 392, 440, 494, 523};
 const char* NAMES[] = {"Do", "Re", "Mi", "Fa", "Sol", "La", "Si", "Do"};
 `);
-  case 'plant':return wrap(soilSetup+oledSetup, `  readSoil();
-  drawPlant();
-  Serial.printf("RAW=%d MOISTURE=%d%%\\n", sensorRaw, moisturePercent);
-  delay(500);`,oledIncludes+soilDefs);
+  case 'plant':return wrap(soilSetup+oledSetup, `  static uint32_t sampledAt = 0;
+  uint32_t now = millis();
+  if (now - sampledAt >= 500) {  //~每 500 ms 采样一次，不阻塞循环~sample every 500 ms, loop keeps running
+    sampledAt = now;
+    readSoil();
+    drawPlant();
+    Serial.printf("RAW=%d MOISTURE=%d%%\\n", sensorRaw, moisturePercent);
+  }`,oledIncludes+soilDefs);
   case 'project':return wrap(soilSetup+oledSetup+`  pinMode(23, OUTPUT);
   ledcAttach(25, 2000, 10);
   server.on("/", HTTP_GET, [](){ server.send(200, "text/html; charset=utf-8", GARDEN_PAGE); });  //~首页返回控制页~control page

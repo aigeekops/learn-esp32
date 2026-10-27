@@ -6,6 +6,8 @@ const communication=new Set(['uart','ble','espnow','robot']);
 const dual=new Set(['differential','uart','ble','espnow','robot']);
 const TAU=2*Math.PI;
 const ENCODER_COUNTS_PER_REV=360;
+//~ROS 2 Twist 语义：线速度 m/s、偏航角速度 rad/s~ROS 2 Twist semantics: m/s and rad/s
+const MAX_LINEAR=.25,MAX_ANGULAR=2;
 
 /** A teaching model, with finite motor response and quantised encoder measurements. */
 export class RobotSimulation {
@@ -29,16 +31,27 @@ export class RobotSimulation {
   this.txCount++;
   const link=this.link();
   if(link!=='CONNECTED'){this.response='NO_REPLY '+link;this.onLog(this.response);return;}
-  const command=String(this.values.command??'set');
-  const left=Number(this.values.leftRpm??60),right=Number(this.values.rightRpm??60);
-  if(!['set','stop'].includes(command)||command==='set'&&(!Number.isFinite(left)||!Number.isFinite(right)||Math.abs(left)>150||Math.abs(right)>150)){
+  const command=String(this.values.command??'twist');
+  if(command==='stop'){
+   this.commandLeft=0;this.commandRight=0;this.lastCommand=this.time;this.rxCount++;
+   this.resolveTargets();this.response='OK '+JSON.stringify({stop:true,mode:this.mode});this.onLog(this.response);return;
+  }
+  const linear=Number(this.values.linear),angular=Number(this.values.angular);
+  if(command!=='twist'||!Number.isFinite(linear)||!Number.isFinite(angular)||Math.abs(linear)>MAX_LINEAR||Math.abs(angular)>MAX_ANGULAR){
    this.response='ERR invalid command';this.onLog(this.response);return;
   }
-  this.commandLeft=command==='stop'?0:left;this.commandRight=command==='stop'?0:right;
-  this.lastCommand=this.time;this.rxCount++;
+  const wheels=this.twistToWheels(linear,angular);
+  this.commandLeft=wheels.left;this.commandRight=wheels.right;this.lastCommand=this.time;this.rxCount++;
   this.resolveTargets();
-  this.response='OK '+JSON.stringify({leftRpm:this.measured[0],rightRpm:this.measured[1],targetLeft:this.targetLeft,targetRight:this.targetRight,mode:this.mode});
+  this.response='OK '+JSON.stringify({linear,angular,targetLeft:this.targetLeft,targetRight:this.targetRight,mode:this.mode});
   this.onLog(this.response);
+ }
+ //~Twist 换算成轮速：超 150 RPM 时等比缩放，保持曲率~Twist to wheel RPM, scaled together above 150
+ private twistToWheels(linear:number,angular:number){
+  const radius=Math.max(.005,this.n('wheelRadius',.0325)),track=Math.max(.02,this.n('trackWidth',.145));
+  const left=(linear-angular*track/2)/radius*60/TAU,right=(linear+angular*track/2)/radius*60/TAU;
+  const scale=Math.max(1,Math.abs(left)/150,Math.abs(right)/150);
+  return {left:left/scale,right:right/scale};
  }
  private resolveTargets(){
   const {id}=this;
@@ -49,11 +62,8 @@ export class RobotSimulation {
   }else if(id==='speed'){
    this.targetLeft=clamp(this.n('targetRpm',90),-180,180);this.mode=this.values.control==='open'?'OPEN_LOOP':'CLOSED_LOOP';
   }else if(id==='differential'){
-   const r=Math.max(.005,this.n('wheelRadius',.0325)),track=Math.max(.02,this.n('trackWidth',.145));
-   const linear=this.n('linear',.15),angular=this.n('angular',0);
-   const left=(linear-angular*track/2)/r*60/TAU,right=(linear+angular*track/2)/r*60/TAU;
-   const scale=Math.max(1,Math.abs(left)/150,Math.abs(right)/150);
-   this.targetLeft=left/scale;this.targetRight=right/scale;this.mode='CLOSED_LOOP';
+   const wheels=this.twistToWheels(this.n('linear',.15),this.n('angular',0));
+   this.targetLeft=wheels.left;this.targetRight=wheels.right;this.mode='CLOSED_LOOP';
   }else if(communication.has(id)){
    if(id==='ble'&&this.link()==='DISCONNECTED'){
     this.commandLeft=0;this.commandRight=0;this.lastCommand=-Infinity;this.mode='DISCONNECTED';return;
