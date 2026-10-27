@@ -13,7 +13,10 @@ import {connections,circuitSvg} from './circuit.ts';
 import {componentDescription} from './component-info.ts';
 import {robotReadout,robotState} from './robot-ui.ts';
 import {installUIScale} from './ui-scale.ts';
+import {Boot} from './boot.ts';
 
+const boot=new Boot();
+document.getElementById('app')?.setAttribute('inert','');
 installUIScale();
 
 const $=<T extends HTMLElement=HTMLElement>(selector:string)=>document.querySelector<T>(selector)!;
@@ -42,11 +45,15 @@ he:['ללמוד ESP32','לגלות · להבין · לבנות','בית','שיע
 };
 const ui=packs[language]??packs.zh;
 const text=(zh:string,en:string)=>english?en:zh;
+const bootTitle=document.querySelector<HTMLElement>('.boot-title');if(bootTitle)bootTitle.textContent=ui[0];
+const bootStep=(zh:string,en:string,value:number)=>boot.progress(english?en:zh,value);
+bootStep('正在加载…','Loading…',.04);
+window.addEventListener('error',()=>boot.fail(text('3D 场景未能启动，请刷新重试。','The 3D scene could not start. Please reload.')),{once:true});
 let done=new Set(load<string[]>('done',[]).filter(id=>lessons.some(l=>l.id===id)));
 let saved=load<Record<string,Values>>('values',{});
 let settings={labels:true,flow:true,grid:true,autoRotate:false,sound:true,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,schematic:true,...load<Record<string,boolean>>('settings',{})};
 let lesson:Lesson=lessons.find(l=>l.id===location.hash.slice(1))??lessons[0];
-let values=normalize(lesson,saved[lesson.id]??{}),activeTab='overview',inspected='',hoveredPart='',menu='',status:'stopped'|'loading'|'running'='stopped',runToken=0;
+let values=normalize(lesson,saved[lesson.id]??{}),activeTab='overview',inspected='',hoveredPart='',schematicHover=false,menu='',status:'stopped'|'loading'|'running'='stopped',runToken=0;
 let model:Simulation|undefined,snapshot:Snapshot|undefined,lastFrame=0,toastTimer:ReturnType<typeof setTimeout>;
 let activeLine=-1;
 let heldInput=false;const heldKeys=new Set<number>();
@@ -66,7 +73,9 @@ const followDialog=$<HTMLDialogElement>('.wechat-dialog');
 $('#wechat-follow').onclick=()=>followDialog.showModal();
 $('.wechat-close').onclick=()=>followDialog.close();
 followDialog.addEventListener('click',e=>{if(e.target===followDialog){const r=followDialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)followDialog.close();}});
+bootStep('正在搭建 3D 场景…','Building the 3D workbench…',.25);
 const stage=new Workbench($('.workbench'),{select:id=>openInspector(id),hover:id=>{hoveredPart=id;syncSchematicSelection();},input:(key,v)=>updateParam(key,v),button:inputButton,key:inputKey});
+bootStep('正在载入课程…','Loading lessons…',.55);
 function toast(message:string){const el=$('.toast');el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,2500);}
 function title(l=lesson){return english?l.en:l.title;}
 function save(){saved[lesson.id]={...values};store('values',saved);}
@@ -126,7 +135,7 @@ function syncSchematicSelection(){
   const id=el.dataset.circuitPart!;const selected=id===circuitId(inspected)||(id==='power'&&/^pin-(GND|3V3|5V)/.test(inspected));
   el.classList.toggle('selected',selected);el.classList.toggle('pointed',!selected&&el===hovered);el.setAttribute('aria-pressed',String(selected));
  });
- if(hovered&&!$('.schematic').hidden)revealSchematicPart(hovered);
+ if(hovered&&!$('.schematic').hidden&&!schematicHover)revealSchematicPart(hovered);
 }
 function revealSchematicPart(el:SVGElement){
  const body=$('.schematic-body');if(!body)return;
@@ -138,7 +147,13 @@ function schematic(){
  const scrollTop=$('.schematic-body')?.scrollTop??0;
  $('.schematic').innerHTML='<div class="schematic-head"><b>'+text('原理图','Schematic')+'</b><small>'+title()+'</small><button aria-label="'+text('关闭原理图','Close schematic')+'" id="close-schematic">'+icon('close')+'</button></div><div class="schematic-body" tabindex="0" role="region" aria-label="'+text('电路原理图，支持滚动和键盘翻页','Circuit diagram, scroll or use Page Up and Page Down')+'">'+circuitSvg(lesson,values,english)+'</div>';
  $('.schematic').insertAdjacentHTML('beforeend','<p class="schematic-hint">'+text('点击元件或引脚，查看 3D 与参数','Select a component or pin to inspect it in 3D')+'</p>');
- $('.schematic').querySelectorAll<SVGElement>('[data-circuit-part]').forEach(el=>{const activate=()=>openInspector(el.dataset.circuitPart!);el.onclick=e=>{e.stopPropagation();activate();};el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();activate();}};});syncSchematicSelection();
+ $('.schematic').querySelectorAll<SVGElement>('[data-circuit-part]').forEach(el=>{const part=el.dataset.circuitPart!;const activate=()=>openInspector(part);el.onclick=e=>{e.stopPropagation();activate();};el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();activate();}};
+  // Hovering the diagram lifts the matching 3D part with the same bounce the 3D view uses.
+  el.addEventListener('pointerenter',e=>{if(e.pointerType==='touch')return;schematicHover=true;stage.hoverPart(part);});
+  el.addEventListener('pointerleave',e=>{const to=e.relatedTarget;if(to instanceof Element&&to.closest('[data-circuit-part]'))return;schematicHover=false;stage.hoverPart('');});
+  el.addEventListener('focus',()=>{schematicHover=true;stage.hoverPart(part);});
+  el.addEventListener('blur',()=>{schematicHover=false;stage.hoverPart('');});
+ });syncSchematicSelection();
  $('.schematic-body').scrollTop=scrollTop;
  $('#close-schematic').onclick=()=>setSetting('schematic',false);
 }
@@ -201,7 +216,7 @@ async function run(){
  if(!done.has(lesson.id)){done.add(lesson.id);store('done',[...done]);renderCards();}
 }
 function stop(){endCommandStream();++runToken;heldInput=false;heldKeys.clear();gain?.gain.setTargetAtTime(0,audio!.currentTime,.015);if(status!=='stopped')appendLog(text('已停止。','Stopped.'));model=undefined;snapshot=undefined;setStatus('stopped');if(settings.schematic)schematic();$('.code-line.active')?.classList.remove('active');activeLine=-1;$('.readout').hidden=true;}
-function setLesson(id:string,updateHash=true){const l=lessons.find(l=>l.id===id);if(!l)return;save();stop();lesson=l;values=normalize(l,saved[l.id]??{});activeTab='overview';setExpandedPanel();$('.code-body').scrollTop=0;$('.serial').style.removeProperty('--serial-height');$('.inspector').hidden=true;Object.assign(stage.settings,settings);stage.setLesson(l,values);inspected='';renderCards();const card=$('.course-card.active');$('.course-track').scrollLeft=Math.max(0,card.offsetLeft-($('.course-track').clientWidth-card.clientWidth)/2);renderInfo();renderCode();schematic();$('.schematic').hidden=!settings.schematic;stage.updateCamera();$('.serial-logs').replaceChildren();document.title=title()+' · '+ui[0];if(updateHash)history.replaceState(null,'','#'+l.id);menu='';$('.flyout').hidden=true;updateNav();}
+function setLesson(id:string,updateHash=true){const l=lessons.find(l=>l.id===id);if(!l)return;save();stop();lesson=l;values=normalize(l,saved[l.id]??{});activeTab='overview';setExpandedPanel();$('.code-body').scrollTop=0;$('.serial').style.removeProperty('--serial-height');$('.inspector').hidden=true;Object.assign(stage.settings,settings);stage.setLesson(l,values);inspected='';schematicHover=false;renderCards();const card=$('.course-card.active');$('.course-track').scrollLeft=Math.max(0,card.offsetLeft-($('.course-track').clientWidth-card.clientWidth)/2);renderInfo();renderCode();schematic();$('.schematic').hidden=!settings.schematic;stage.updateCamera();$('.serial-logs').replaceChildren();document.title=title()+' · '+ui[0];if(updateHash)history.replaceState(null,'','#'+l.id);menu='';$('.flyout').hidden=true;updateNav();}
 function setSetting(key:string,value:boolean){(settings as Record<string,boolean>)[key]=value;store('settings',settings);Object.assign(stage.settings,settings);if(key==='schematic'){$('.schematic').hidden=!value;schematic();stage.updateCamera();}document.querySelector('[data-view="'+key+'"]')?.setAttribute('aria-checked',String(value));}
 function openMenu(kind:string){
  const el=$('.flyout');if(menu===kind&&!el.hidden){el.hidden=true;menu='';updateNav();return;}menu=kind;el.hidden=false;updateNav();
@@ -289,5 +304,7 @@ function frame(now:number){
  stage.draw(now,snapshot,english);
 }
 setLesson(lesson.id);
+bootStep('正在准备界面…','Preparing the interface…',.85);
 function clock(){const date=new Date();$('.clock').innerHTML=date.toLocaleDateString(language==='zh'?'zh-CN':language,{year:'numeric',month:'long',day:'numeric'})+'<br>'+date.toLocaleTimeString('en-GB',{hour12:false});}
 clock();setInterval(clock,1000);requestAnimationFrame(frame);
+void boot.done(settings.reducedMotion);

@@ -14,7 +14,7 @@ export class Workbench{
  renderer:T.WebGLRenderer; scene=new T.Scene(); camera=new T.OrthographicCamera(); root=new T.Group();
  entries=new Map<string,Entry>(); pins=new Map<string,T.Vector3>(); lights:T.Mesh[]=[]; flows:{curve:T.CatmullRomCurve3;dots:T.Mesh[];part:string;pin:string;tube:T.Mesh;count:number}[]=[];
  angle=.65;elevation=.85;zoom=1;pan=new T.Vector3(); boardX=0; private pointer:{x:number;y:number;moved:boolean;mode:string;part:string|null}|null=null;
- private ray=new T.Raycaster(); private ndc=new T.Vector2(); private target=new T.Vector3(); private cameraDestination=new T.Vector3(); private cameraAim=new T.Vector3(); private last=0; private hovered=''; private selected=''; private ring=new T.Group();private ringReveal=0;
+ private ray=new T.Raycaster(); private ndc=new T.Vector2(); private target=new T.Vector3(); private cameraDestination=new T.Vector3(); private cameraAim=new T.Vector3(); private last=0; private hovered=''; private externalHover='';private partAlias:Record<string,string>={'light-resistor':'ldr','echo-resistor-upper':'ranger','echo-resistor-lower':'ranger'}; private selected=''; private ring=new T.Group();private ringReveal=0;
  private bounce?:{group:T.Group;baseY:number;start:number};private hoverHint:HTMLDivElement;private selectionLink:SVGSVGElement;
  private circuitBounds=[new T.Box3(new T.Vector3(-14,-2,-26),new T.Vector3(14,10,26))];private focusId='';private viewHeight=125;private desiredHeight=125;
  private assembly?:{start:number;board:T.Group;fromX:number;toX:number;incoming:{group:T.Object3D;position:T.Vector3;delay:number}[];outgoing:T.Group;duration:number};private materials:T.Material[]=[]; tags:HTMLDivElement; labelNodes=new Map<string,HTMLButtonElement>(); lesson!:Lesson; values:Values={};
@@ -33,7 +33,7 @@ export class Workbench{
   this.ring=this.makeRing(.8);this.scene.add(this.ring);
   this.hoverHint=document.createElement('div');this.hoverHint.className='component-tooltip';this.hoverHint.setAttribute('role','tooltip');this.hoverHint.hidden=true;this.host.append(this.hoverHint);
   this.selectionLink=document.createElementNS('http://www.w3.org/2000/svg','svg');this.selectionLink.classList.add('selection-link');this.selectionLink.setAttribute('aria-hidden','true');this.selectionLink.innerHTML='<path/><circle r="5"/>';this.selectionLink.style.display='none';this.host.append(this.selectionLink);
-  this.host.addEventListener('pointerleave',()=>this.setHover(''));
+  this.host.addEventListener('pointerleave',()=>{this.externalHover='';this.setHover('');});
   this.host.addEventListener('pointerdown',e=>this.down(e));
   window.addEventListener('pointermove',e=>this.move(e));window.addEventListener('pointerup',()=>this.up());window.addEventListener('pointercancel',()=>this.cancel());window.addEventListener('blur',()=>this.cancel());
   this.renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();this.zoom=Math.max(.4,Math.min(5,this.zoom*Math.exp(-e.deltaY*.001)));this.updateCamera();},{passive:false});
@@ -190,7 +190,7 @@ export class Workbench{
   const dots:T.Mesh[]=[];for(let i=0;i<3;i++){const dot=new T.Mesh(new T.SphereGeometry(.5,6,6),new T.MeshBasicMaterial({color:0xf4dba0}));this.root.add(dot);dots.push(dot);}this.flows.push({curve,dots,part,pin,tube,count:tube.geometry.index!.count});
  }
  setLesson(l:Lesson,values:Values){
-  this.setHover('');this.finishAssembly();this.cancel();this.select('');
+  this.externalHover='';this.setHover('');this.finishAssembly();this.cancel();this.select('');
   const board=this.entries.get('board')?.group,fromX=board?.position.x??0;
   const boardEntries=[...this.entries].filter(([,entry])=>{let node:T.Object3D|null=entry.group;while(node){if(node===board)return true;node=node.parent;}return false;});
   const pins=new Map(this.pins),previousX=this.boardX,outgoing=new T.Group();
@@ -285,6 +285,12 @@ export class Workbench{
   b.group.position.y=b.baseY+(this.settings.reducedMotion?0:Math.sin(progress*Math.PI)*Math.pow(1-progress,.5)*1.6);
   if(progress>=1||this.settings.reducedMotion){b.group.position.y=b.baseY;this.bounce=undefined;}
  }
+ /** Lift a part from an external control such as a schematic hover. */
+ hoverPart(id:string){
+  const key=id?(this.partAlias[id]??id):'';
+  if(id&&!this.entries.has(key)){this.externalHover='';this.setHover('');return;}
+  this.externalHover=key;this.setHover(key);
+ }
  private setHover(id:string){
   if(this.assembly)id='';if(id===this.hovered)return;
   this.restoreBounce();this.bounce=undefined;this.hovered=id;this.host.dataset.hoveredPart=id;this.onHover(id);
@@ -324,7 +330,7 @@ export class Workbench{
    this.ring.scale.setScalar(radius*(.9+.1*eased));
    for(const child of this.ring.children)((child as T.Mesh).material as T.MeshBasicMaterial).opacity=.8*(.25+.75*eased);
   }
-  const hovered=this.entries.get(this.hovered);this.hoverHint.hidden=!hovered||!!this.pointer||this.labelNodes.has(this.hovered)||!!this.assembly;
+  const hovered=this.entries.get(this.hovered);this.hoverHint.hidden=!hovered||!!this.pointer||this.labelNodes.has(this.hovered)||!!this.assembly||this.externalHover===this.hovered;
   if(hovered&&!this.hoverHint.hidden){const point=hovered.group.localToWorld(hovered.anchor.clone()).project(this.camera);this.hoverHint.textContent=english?hovered.en:hovered.label;const x=(point.x+1)/2*this.host.clientWidth,y=(1-point.y)/2*this.host.clientHeight;
    this.hoverHint.style.left=Math.max(10,Math.min(this.host.clientWidth-this.hoverHint.offsetWidth-10,x+14))+'px';this.hoverHint.style.top=Math.max(8,Math.min(this.host.clientHeight-45,y-30))+'px';
   }
@@ -419,7 +425,7 @@ export class Workbench{
   if(part==='obstacle')this.pointer.mode='distance';
  }
  move(e:PointerEvent){
-  const p=this.pointer;if(!p){const target=e.target as HTMLElement;if(target===this.renderer.domElement&&e.pointerType!=='touch'){const id=this.pick(e.clientX,e.clientY);this.setHover(id??'');this.host.style.cursor=id?'pointer':'grab';}else if(!target.closest('.scene-tag'))this.setHover('');return;}const dx=e.clientX-p.x,dy=e.clientY-p.y;if(Math.abs(dx)+Math.abs(dy)>2)p.moved=true;
+  const p=this.pointer;if(!p){const target=e.target as HTMLElement;if(target===this.renderer.domElement&&e.pointerType!=='touch'){this.externalHover='';const id=this.pick(e.clientX,e.clientY);this.setHover(id??'');this.host.style.cursor=id?'pointer':'grab';}else if(!target.closest('.scene-tag,.schematic'))this.setHover('');return;}const dx=e.clientX-p.x,dy=e.clientY-p.y;if(Math.abs(dx)+Math.abs(dy)>2)p.moved=true;
   if(p.mode==='pot'){this.onInput('knob',Math.max(0,Math.min(100,Number(this.values.knob??50)+(dx-dy)*.5)));}
   else if(p.mode==='servo'){this.onInput('pulse',Math.max(1000,Math.min(2000,Number(this.values.pulse??1500)+(dx-dy)*5)));}
   else if(p.mode==='distance'){this.onInput('distance',Math.max(2,Math.min(200,Number(this.values.distance??60)+(dx-dy)*.7)));}
