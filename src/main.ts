@@ -25,7 +25,10 @@ const storageKey=(key:string)=>'learn-esp32:'+(key==='done'||key==='values'?'cou
 const load=<T>(key:string,value:T):T=>{try{return JSON.parse(localStorage.getItem(storageKey(key))??'null')??value;}catch{return value;}};
 function store(key:string,value:unknown){try{localStorage.setItem(storageKey(key),JSON.stringify(value));}catch{toast(english?'Local storage unavailable':'本地存储不可用，刷新后参数不会保留');}}
 const languages=[['zh','简体中文'],['en','English'],['es','Español'],['pt','Português'],['fr','Français'],['de','Deutsch'],['it','Italiano'],['tr','Türkçe'],['id','Bahasa Indonesia'],['ja','日本語'],['ko','한국어'],['hi','हिन्दी'],['he','עברית']];
-let language=load('language','zh');
+// First visit: pick language from the browser's preferred locales (navigator.languages),
+// falling back to English when nothing matches. A stored choice always wins.
+const detectLanguage=()=>{const supported=new Set(languages.map(([code])=>code));for(const tag of navigator.languages??[navigator.language]){const base=tag.toLowerCase().split('-')[0];if(supported.has(base))return base;}return 'en';};
+let language=load('language','')||detectLanguage();
 const english=language!=='zh';
 document.documentElement.lang=language==='zh'?'zh-CN':language;
 const packs:Record<string,string[]>={
