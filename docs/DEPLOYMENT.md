@@ -22,6 +22,12 @@
 
 `npm run check:dist` 检查构建产物在 `/` 和 `/learn-esp32/` 下的资源解析，以及许可和单文件脚本语法。这是本地检查，不等同于 GitHub 实际部署已经成功。
 
+## 访问统计
+
+正式站（`dist/`）由 `index.html` 加载 Umami Cloud 脚本，只记录不含个人信息的访问汇总，不使用 cookie。`data-domains` 限定为 `aigeekops.github.io`，本地 `npm run dev` 与 `npm run preview` 不会上报；每个项目应使用各自独立的 `data-website-id`，不要与其他项目共用。
+
+单文件版 `output/learn-esp32.html` 打包时会剔除该脚本，保持完全离线、自包含；`npm run check:dist` 校验这一分离。更换统计站点或停用时，修改或删除 `index.html` 中的该标签。
+
 ## 更新与验证
 
 源码 push 和 PR 触发 `.github/workflows/ci.yml`；CI 只读仓库，执行基本测试、静态构建、单文件检查和示例导出。固件工具链体积较大，默认 CI 不安装或运行它。

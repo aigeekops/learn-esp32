@@ -9,7 +9,7 @@ const [index,standalone,license,vendor]=await Promise.all([
   read(resolve(dist,'index.html')),read('output/learn-esp32.html'),
   read('LICENSE'),read('node_modules/three/LICENSE')
 ]);
-const js=index.match(/<script[^>]*src="([^"]+)"/)?.[1];
+const js=index.match(/<script[^>]*type="module"[^>]*src="([^"]+)"/)?.[1];
 const css=index.match(/<link[^>]*href="([^"]+\.css)"/)?.[1];
 assert.ok(js&&css,'Expected the Vite module and stylesheet');
 for(const path of [js,css])assert.ok(path.startsWith('./'),'Assets must be relative for GitHub Pages');
@@ -37,4 +37,7 @@ const script=standalone.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]
 assert.ok(script,'Standalone script is missing');
 const syntax=spawnSync(process.execPath,['--check','--input-type=module'],{input:script,encoding:'utf8'});
 assert.equal(syntax.status,0,syntax.stderr||syntax.error?.message);
-console.log('Distribution checked: root/subpath assets, complete licenses, standalone syntax.');
+assert.match(index,/cloud\.umami\.is\/script\.js/,'Expected the Umami tracker in the Pages build');
+assert.match(index,/data-website-id="[0-9a-f-]{36}"/,'Expected a Umami website id');
+assert.doesNotMatch(standalone,/cloud\.umami\.is|data-website-id=/,'Standalone build must not embed hosted analytics');
+console.log('Distribution checked: root/subpath assets, complete licenses, standalone syntax, analytics split.');
